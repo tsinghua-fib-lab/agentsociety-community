@@ -31,6 +31,7 @@ jobs:
       - name: Build wheels for Linux
         run: |
           uv venv
+          source .venv/bin/activate
           uv pip install build 
           uv pip install wheel 
           python -m build --wheel
@@ -53,6 +54,7 @@ jobs:
       - name: Build wheels for macOS
         run: |
           uv venv
+          source .venv/bin/activate
           uv pip install build 
           uv pip install wheel 
           python -m build --wheel
@@ -92,5 +94,6 @@ jobs:
       - name: Publish package to PyPI
         run: |
           uv venv
+          source .venv/bin/activate
           uv pip install twine 
           python -m twine upload dist/*.whl
