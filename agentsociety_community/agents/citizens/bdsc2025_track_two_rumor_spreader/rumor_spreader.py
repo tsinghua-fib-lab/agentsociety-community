@@ -1,9 +1,11 @@
 import asyncio
 import random
 import time
+from collections import deque
 from typing import Any, Optional
 
-from agentsociety.agent import Agent, AgentToolbox, Block, CitizenAgentBase
+from agentsociety.agent import (Agent, AgentToolbox, Block, CitizenAgentBase,
+                                StatusAttribute)
 from agentsociety.memory import Memory
 
 from .sharing_params import (RumorSpreaderBlockOutput, RumorSpreaderConfig,
@@ -14,6 +16,268 @@ class RumorSpreader(CitizenAgentBase):
 
     ParamsType = RumorSpreaderConfig
     BlockOutputType = RumorSpreaderBlockOutput
+    StatusAttributes = [
+        # Needs Model
+        StatusAttribute(
+            name="hunger_satisfaction",
+            type=float,
+            default=0.9,
+            description="agent's hunger satisfaction, 0-1",
+        ),
+        StatusAttribute(
+            name="energy_satisfaction",
+            type=float,
+            default=0.9,
+            description="agent's energy satisfaction, 0-1",
+        ),
+        StatusAttribute(
+            name="safety_satisfaction",
+            type=float,
+            default=0.4,
+            description="agent's safety satisfaction, 0-1",
+        ),
+        StatusAttribute(
+            name="social_satisfaction",
+            type=float,
+            default=0.6,
+            description="agent's social satisfaction, 0-1",
+        ),
+        StatusAttribute(
+            name="current_need",
+            type=str,
+            default="none",
+            description="agent's current need",
+        ),
+        # Plan Behavior Model
+        StatusAttribute(
+            name="current_plan",
+            type=dict,
+            default={},
+            description="agent's current plan",
+        ),
+        StatusAttribute(
+            name="execution_context",
+            type=dict,
+            default={},
+            description="agent's execution context",
+        ),
+        StatusAttribute(
+            name="plan_history",
+            type=list,
+            default=[],
+            description="agent's plan history",
+        ),
+        # Cognition
+        StatusAttribute(
+            name="emotion",
+            type=dict,
+            default={
+                "sadness": 5,
+                "joy": 5,
+                "fear": 5,
+                "disgust": 5,
+                "anger": 5,
+                "surprise": 5,
+            },
+            description="agent's emotion, 0-10",
+        ),
+        StatusAttribute(
+            name="attitude",
+            type=dict,
+            default={},
+            description="agent's attitude",
+            whether_embedding=True,
+        ),
+        StatusAttribute(
+            name="thought",
+            type=str,
+            default="Currently nothing good or bad is happening",
+            description="agent's thought",
+            whether_embedding=True,
+        ),
+        StatusAttribute(
+            name="emotion_types",
+            type=str,
+            default="Relief",
+            description="agent's emotion types",
+            whether_embedding=True,
+        ),
+        # Economy
+        StatusAttribute(
+            name="work_skill", type=float, default=0.0, description="agent's work skill"
+        ),
+        StatusAttribute(
+            name="tax_paid", type=float, default=0.0, description="agent's tax paid"
+        ),
+        StatusAttribute(
+            name="consumption_currency",
+            type=float,
+            default=0.0,
+            description="agent's consumption currency",
+        ),
+        StatusAttribute(
+            name="goods_demand", type=int, default=0, description="agent's goods demand"
+        ),
+        StatusAttribute(
+            name="goods_consumption",
+            type=int,
+            default=0,
+            description="agent's goods consumption",
+        ),
+        StatusAttribute(
+            name="work_propensity",
+            type=float,
+            default=0.0,
+            description="agent's work propensity",
+        ),
+        StatusAttribute(
+            name="consumption_propensity",
+            type=float,
+            default=0.0,
+            description="agent's consumption propensity",
+        ),
+        StatusAttribute(
+            name="to_consumption_currency",
+            type=float,
+            default=0.0,
+            description="agent's to consumption currency",
+        ),
+        StatusAttribute(
+            name="firm_id", type=int, default=0, description="agent's firm id"
+        ),
+        StatusAttribute(
+            name="government_id",
+            type=int,
+            default=0,
+            description="agent's government id",
+        ),
+        StatusAttribute(
+            name="bank_id", type=int, default=0, description="agent's bank id"
+        ),
+        StatusAttribute(
+            name="nbs_id", type=int, default=0, description="agent's nbs id"
+        ),
+        StatusAttribute(
+            name="dialog_queue",
+            type=deque,
+            default=deque(maxlen=3),
+            description="agent's dialog queue",
+        ),
+        StatusAttribute(
+            name="firm_forward", type=int, default=0, description="agent's firm forward"
+        ),
+        StatusAttribute(
+            name="bank_forward", type=int, default=0, description="agent's bank forward"
+        ),
+        StatusAttribute(
+            name="nbs_forward", type=int, default=0, description="agent's nbs forward"
+        ),
+        StatusAttribute(
+            name="government_forward",
+            type=int,
+            default=0,
+            description="agent's government forward",
+        ),
+        StatusAttribute(
+            name="forward", type=int, default=0, description="agent's forward"
+        ),
+        StatusAttribute(
+            name="depression",
+            type=float,
+            default=0.0,
+            description="agent's depression, 0-1",
+        ),
+        StatusAttribute(
+            name="ubi_opinion", type=list, default=[], description="agent's ubi opinion"
+        ),
+        StatusAttribute(
+            name="working_experience",
+            type=list,
+            default=[],
+            description="agent's working experience",
+        ),
+        StatusAttribute(
+            name="work_hour_month",
+            type=float,
+            default=160,
+            description="agent's work hour per month",
+        ),
+        StatusAttribute(
+            name="work_hour_finish",
+            type=float,
+            default=0,
+            description="agent's work hour finished",
+        ),
+        # Social
+        StatusAttribute(
+            name="followers",
+            type=list,
+            default=[],
+            description="agent's followers list",
+        ),
+        StatusAttribute(
+            name="following",
+            type=list,
+            default=[],
+            description="agent's following list",
+        ),
+        StatusAttribute(
+            name="friends_info",
+            type=dict,
+            default={},
+            description="agent's friends info",
+        ),
+        StatusAttribute(
+            name="relationships",
+            type=dict,
+            default={},
+            description="agent's relationship strength with each friend",
+        ),
+        StatusAttribute(
+            name="relation_types",
+            type=dict,
+            default={},
+            description="agent's relation types with each friend",
+        ),
+        StatusAttribute(
+            name="chat_histories",
+            type=dict,
+            default={},
+            description="all chat histories",
+        ),
+        StatusAttribute(
+            name="interactions",
+            type=dict,
+            default={},
+            description="all interaction records",
+        ),
+        # Mobility
+        StatusAttribute(
+            name="number_poi_visited",
+            type=int,
+            default=1,
+            description="agent's number of poi visited",
+        ),
+        StatusAttribute(
+            name="location_knowledge",
+            type=dict,
+            default={},
+            description="agent's location knowledge",
+        ),
+        StatusAttribute(
+            name="message_propagation_preference",
+            type=str,
+            default="",
+            description="agent's message propagation preference",
+        ),
+        StatusAttribute(
+            name="background_story",
+            type=str,
+            default="",
+            description="agent's background story",
+        ),
+    ]
+
     ContextType = RumorSpreaderContext
     name = "RumorSpreader"
     description = "Responsible for spreading rumors"
