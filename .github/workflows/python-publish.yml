@@ -27,13 +27,20 @@ jobs:
       - name: Build frontend
         run: |
           bash scripts/rebuild_frontend.sh
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for Linux
-        uses: pypa/cibuildwheel@v2.19.2
+        run: |
+          uv pip install build
+          uv pip install wheel
+          python -m build --wheel
       - name: Upload Linux wheels as artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-wheels
-          path: wheelhouse/
+          path: dist/*.whl
           retention-days: 1
 
   deploy-macos:
@@ -44,13 +51,20 @@ jobs:
       - name: Build frontend
         run: |
           bash scripts/rebuild_frontend.sh
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for macOS
-        uses: pypa/cibuildwheel@v2.19.2
+        run: |
+          uv pip install build
+          uv pip install wheel
+          python -m build --wheel
       - name: Upload macOS wheels as artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-wheels
-          path: wheelhouse/
+          path: dist/*.whl
           retention-days: 1
 
   publish:
@@ -72,11 +86,14 @@ jobs:
           path: macos-wheels
       - name: Combine wheels into a single directory
         run: |
-          mkdir -p wheelhouse
-          cp linux-wheels/*.whl wheelhouse/
-          cp macos-wheels/*.whl wheelhouse/
+          mkdir -p dist
+          cp linux-wheels/*.whl dist/
+          cp macos-wheels/*.whl dist/
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Publish package to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          verbose: true
-          packages-dir: wheelhouse/
+        run: |
+          uv pip install twine
+          python -m twine upload dist/*.whl
