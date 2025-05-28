@@ -30,8 +30,9 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for Linux
         run: |
-          uv pip install build --system
-          uv pip install wheel --system
+          uv venv
+          uv pip install build 
+          uv pip install wheel 
           python -m build --wheel
       - name: Upload Linux wheels as artifact
         uses: actions/upload-artifact@v4
@@ -51,8 +52,9 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for macOS
         run: |
-          uv pip install build --system
-          uv pip install wheel --system
+          uv venv
+          uv pip install build 
+          uv pip install wheel 
           python -m build --wheel
       - name: Upload macOS wheels as artifact
         uses: actions/upload-artifact@v4
@@ -89,5 +91,6 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Publish package to PyPI
         run: |
-          uv pip install twine --system
+          uv venv
+          uv pip install twine 
           python -m twine upload dist/*.whl
