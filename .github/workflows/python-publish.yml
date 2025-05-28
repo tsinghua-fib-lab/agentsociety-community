@@ -30,8 +30,8 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for Linux
         run: |
-          uv pip install build
-          uv pip install wheel
+          uv pip install build --system
+          uv pip install wheel --system
           python -m build --wheel
       - name: Upload Linux wheels as artifact
         uses: actions/upload-artifact@v4
@@ -45,17 +45,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build frontend
-        run: |
-          bash scripts/rebuild_frontend.sh
       - name: Install uv
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Build wheels for macOS
         run: |
-          uv pip install build
-          uv pip install wheel
+          uv pip install build --system
+          uv pip install wheel --system
           python -m build --wheel
       - name: Upload macOS wheels as artifact
         uses: actions/upload-artifact@v4
@@ -92,5 +89,5 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
       - name: Publish package to PyPI
         run: |
-          uv pip install twine
+          uv pip install twine --system
           python -m twine upload dist/*.whl
