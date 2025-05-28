@@ -15,6 +15,7 @@ from agentsociety.agent import CitizenAgentBase
 
 if TYPE_CHECKING:
     from .example import ExampleCitizen
+    from .bdsc2025_track_two_envcitizen.envcitizen import EnvCitizen
 
 
 def _import_example_citizen() -> Type[CitizenAgentBase]:
@@ -23,13 +24,21 @@ def _import_example_citizen() -> Type[CitizenAgentBase]:
     return ExampleCitizen
 
 
+def _import_env_citizen() -> Type[CitizenAgentBase]:
+    from .bdsc2025_track_two_envcitizen.envcitizen import EnvCitizen
+
+    return EnvCitizen
+
+
 def __getattr__(name: str) -> Type[CitizenAgentBase]:
     if name == "ExampleCitizen":
         return _import_example_citizen()
+    if name == "EnvCitizen":
+        return _import_env_citizen()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["ExampleCitizen"]
+__all__ = ["ExampleCitizen", "EnvCitizen"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
@@ -38,4 +47,5 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
     """
     return {
         "ExampleCitizen": _import_example_citizen,
+        "EnvCitizen": _import_env_citizen,
     }
