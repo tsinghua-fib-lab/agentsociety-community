@@ -14,15 +14,8 @@ from typing import Callable, Dict, Type, TYPE_CHECKING
 from agentsociety.agent import CitizenAgentBase
 
 if TYPE_CHECKING:
-    from .example import ExampleCitizen
     from .bdsc2025_track_two_envcitizen.envcitizen import EnvCitizen
     from .bdsc2025_track_two_rumor_spreader.rumor_spreader import RumorSpreader
-
-
-def _import_example_citizen() -> Type[CitizenAgentBase]:
-    from .example import ExampleCitizen
-
-    return ExampleCitizen
 
 
 def _import_env_citizen() -> Type[CitizenAgentBase]:
@@ -38,8 +31,6 @@ def _import_rumor_spreader() -> Type[CitizenAgentBase]:
 
 
 def __getattr__(name: str) -> Type[CitizenAgentBase]:
-    if name == "ExampleCitizen":
-        return _import_example_citizen()
     if name == "EnvCitizen":
         return _import_env_citizen()
     if name == "RumorSpreader":
@@ -47,7 +38,7 @@ def __getattr__(name: str) -> Type[CitizenAgentBase]:
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["ExampleCitizen", "EnvCitizen", "RumorSpreader"]
+__all__ = ["EnvCitizen", "RumorSpreader"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
@@ -55,7 +46,6 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
     Use this function to get all the citizen classes.
     """
     return {
-        "ExampleCitizen": _import_example_citizen,
         "EnvCitizen": _import_env_citizen,
         "RumorSpreader": _import_rumor_spreader,
     }
