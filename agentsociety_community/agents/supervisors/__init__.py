@@ -16,22 +16,22 @@ from typing import TYPE_CHECKING, Callable, Dict, Type
 from agentsociety.agent import SupervisorBase
 
 if TYPE_CHECKING:
-    from .bdsc2025_track_two_supervisor.supervisor import Supervisor
+    from .bdsc2025_track_two_supervisor.supervisor import BDSC2025Supervisor
 
 
 def _import_bdsc_2025_supervisor() -> Type[SupervisorBase]:
-    from .bdsc2025_track_two_supervisor.supervisor import Supervisor
+    from .bdsc2025_track_two_supervisor.supervisor import BDSC2025Supervisor
 
-    return Supervisor
+    return BDSC2025Supervisor
 
 
 def __getattr__(name: str) -> Type[SupervisorBase]:
-    if name == "Supervisor":
+    if name == "BDSC2025Supervisor":
         return _import_bdsc_2025_supervisor()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["Supervisor"]
+__all__ = ["BDSC2025Supervisor"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
@@ -39,5 +39,5 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
     Use this function to get all the supervisor classes.
     """
     return {
-        "Supervisor": _import_bdsc_2025_supervisor,
+        "BDSC2025Supervisor": _import_bdsc_2025_supervisor,
     }

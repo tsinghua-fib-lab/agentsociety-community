@@ -132,7 +132,7 @@ class RelationNetwork:
         return {"nodes": nodes, "edges": edges}
 
 
-class Supervisor(SupervisorBase):
+class BDSC2025Supervisor(SupervisorBase):
     ParamsType = SupervisorConfig
     BlockOutputType = Any
     Context = SupervisorContext
