@@ -24,14 +24,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
     - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    - name: Build wheels for Linux
+    - name: Create virtual environment and build wheels
       run: |
-        uv pip install --system build
-        uv pip install --system wheel
+        uv venv
+        source .venv/bin/activate
+        uv pip install build wheel
         python -m build --wheel
     - name: Upload Linux wheels as artifact
       uses: actions/upload-artifact@v4
@@ -45,6 +50,10 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
     - name: Build frontend
       run: |
         bash scripts/rebuild_frontend.sh
@@ -52,10 +61,11 @@ jobs:
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    - name: Build wheels for macOS
+    - name: Create virtual environment and build wheels
       run: |
-        uv pip install --system build
-        uv pip install --system wheel
+        uv venv
+        source .venv/bin/activate
+        uv pip install build wheel
         python -m build --wheel
     - name: Upload macOS wheels as artifact
       uses: actions/upload-artifact@v4
@@ -71,6 +81,10 @@ jobs:
     permissions:
       id-token: write # Required for PyPI trusted publishing
     steps:
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
     - name: Download Linux wheels
       uses: actions/download-artifact@v4
       with:
@@ -90,7 +104,9 @@ jobs:
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    - name: Publish package to PyPI
+    - name: Create virtual environment and publish to PyPI
       run: |
-        uv pip install --system twine
+        uv venv
+        source .venv/bin/activate
+        uv pip install twine
         python -m twine upload dist/*.whl
