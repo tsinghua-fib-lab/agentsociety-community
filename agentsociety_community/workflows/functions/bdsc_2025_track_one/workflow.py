@@ -175,7 +175,7 @@ TRACK_ONE_EXPERIMENT=ExpConfig(
         ),
         WorkflowStepConfig(
             type=WorkflowType.RUN,
-            days=0.05,
+            days=1,
             ticks_per_step=1800,
             description="Run the simulation."
         ),
@@ -201,7 +201,7 @@ TRACK_ONE_EXPERIMENT=ExpConfig(
         ),
         WorkflowStepConfig(
             type=WorkflowType.RUN,
-            days=0.05,
+            days=1,
             ticks_per_step=900,
             description="Run the simulation."
         ),
