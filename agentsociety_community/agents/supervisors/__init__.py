@@ -10,32 +10,34 @@ How to add a new supervisor:
 """
 
 from __future__ import annotations
-from typing import Callable, Dict, Type, TYPE_CHECKING
 
+from typing import TYPE_CHECKING, Callable, Dict, Type
+
+from agentsociety.agent import SupervisorBase
 
 if TYPE_CHECKING:
-    from .governance.governance import GovernanceBase
+    from .bdsc_2025_supervisor.supervisor import Supervisor
 
 
-def _import_governance_supervisor() -> Type[GovernanceBase]:
-    from .governance.governance import GovernanceBase
+def _import_bdsc_2025_supervisor() -> Type[SupervisorBase]:
+    from .bdsc_2025_supervisor.supervisor import Supervisor
 
-    return GovernanceBase
+    return Supervisor
 
 
-def __getattr__(name: str) -> Type[GovernanceBase]:
-    if name == "GovernanceBase":
-        return _import_governance_supervisor()
+def __getattr__(name: str) -> Type[SupervisorBase]:
+    if name == "Supervisor":
+        return _import_bdsc_2025_supervisor()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["GovernanceBase"]
+__all__ = ["Supervisor"]
 
 
-def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[GovernanceBase]]]:
+def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
     """
     Use this function to get all the supervisor classes.
     """
     return {
-        "GovernanceSupervisor": _import_governance_supervisor,
-    } 
+        "Supervisor": _import_bdsc_2025_supervisor,
+    }

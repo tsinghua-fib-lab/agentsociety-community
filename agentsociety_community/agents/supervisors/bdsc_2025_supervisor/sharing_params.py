@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field, model_validator
 
 from .default_prompts import *
 
+from agentsociety.agent.dispatcher import DISPATCHER_PROMPT
+
 
 def format_variables(s) -> set[str]:
     """
@@ -17,8 +19,8 @@ def format_variables(s) -> set[str]:
     }
 
 
-class GovernanceConfig(BaseModel):
-    """Configuration for governance system."""
+class SupervisorConfig(BaseModel):
+    """Configuration for supervisor system."""
 
     preprocess_message_prompt: str = Field(
         default=DEFAULT_PREPROCESS_MESSAGE_PROMPT,
@@ -41,6 +43,11 @@ class GovernanceConfig(BaseModel):
         description="Remove follower prompt, determine whether to remove some followers based on the current messages and the remove follower tool.",
     )
 
+    block_dispatch_prompt: str = Field(
+        default=DISPATCHER_PROMPT,
+        description="The prompt used for the block dispatcher, there is a variable 'intention' in the prompt, which is the intention of the task, used to select the most appropriate block",
+    )
+
     @model_validator(mode="after")
     def validate_configuration(self):
         """Validate configuration options to ensure the user selects the correct combination"""
@@ -55,23 +62,24 @@ class GovernanceConfig(BaseModel):
         return self
 
 
-class GovernanceContext(BaseModel):
-    """Context for governance system."""
-    
+class SupervisorContext(BaseModel):
+    """Context for supervisor system."""
+
     # round number
-    current_round_number: int = Field(
-        default=0, description="The current round number"
-    )
+    current_round_number: int = Field(default=0, description="The current round number")
 
     # Current processing message
     current_processing_message: str = Field(
-        default="", description="The current processing message, used in `preprocess_message_prompt`"
+        default="",
+        description="The current processing message, used in `preprocess_message_prompt`",
     )
     current_processing_message_sender_id: int = Field(
-        default=0, description="The sender id of the current processing message, used in `preprocess_message_prompt`"
+        default=0,
+        description="The sender id of the current processing message, used in `preprocess_message_prompt`",
     )
     current_processing_message_receiver_ids: list[int] = Field(
-        default=[], description="The receiver ids of the current processing message, used in `preprocess_message_prompt`"
+        default=[],
+        description="The receiver ids of the current processing message, used in `preprocess_message_prompt`",
     )
 
     # Current round posts
@@ -80,7 +88,8 @@ class GovernanceContext(BaseModel):
     )
     # High score posts
     current_round_high_score_posts: list[dict[str, Any]] = Field(
-        default=[], description="The high score posts in the current round, highly likely to be a rumor"
+        default=[],
+        description="The high score posts in the current round, highly likely to be a rumor",
     )
 
     # Network structure

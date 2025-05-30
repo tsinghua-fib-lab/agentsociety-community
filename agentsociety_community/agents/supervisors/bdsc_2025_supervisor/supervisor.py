@@ -1,17 +1,20 @@
 import asyncio
 import random
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Optional, Set, Tuple, cast
 
 import jsonc
 import pandas as pd
+from agentsociety.agent import (AgentToolbox, Block, StatusAttribute,
+                                SupervisorBase)
 from agentsociety.agent.prompt import FormatPrompt
 from agentsociety.llm import LLM
+from agentsociety.memory import Memory
 from agentsociety.utils.parsers import JsonDictParser
 from openai import OpenAIError
 
 from .sensing_api import InterventionType, SensingAPI
-from .sharing_params import GovernanceConfig, GovernanceContext
+from .sharing_params import SupervisorConfig, SupervisorContext
 
 DEFAULT_INTERVENTION_QUOTAS: dict[InterventionType, dict[str, int]] = {
     InterventionType.DELETE_POST: {"per_round": 10, "global": -1},  # -1 表示无全局限制
@@ -29,35 +32,36 @@ class RelationNode:
 
 
 class RelationNetwork:
-    def __init__(self, relations_df: pd.DataFrame):
-        self.relations_df = relations_df
+    def __init__(self, social_network: dict[int, dict[str, list[int]]]):
         self.nodes: dict[int, RelationNode] = {}
         self.degrees: dict[int, int] = {}  # 添加度数统计
-        for _, row in relations_df.iterrows():
-            source_id = int(row["source"])
-            target_id = int(row["target"])
-            edge_type = int(row["type"])
 
-            # Initialize nodes if they don't exist
-            if source_id not in self.nodes:
-                self.nodes[source_id] = RelationNode(source_id)
-                self.degrees[source_id] = 0
-            if target_id not in self.nodes:
-                self.nodes[target_id] = RelationNode(target_id)
-                self.degrees[target_id] = 0
+        # 遍历社交网络字典
+        for agent_id, connections in social_network.items():
+            # 初始化节点
+            if agent_id not in self.nodes:
+                self.nodes[agent_id] = RelationNode(agent_id)
+                self.degrees[agent_id] = 0
 
-            # Add one-way relationship
-            self.nodes[source_id].following.add(target_id)
-            self.nodes[target_id].followers.add(source_id)
-            self.degrees[source_id] += 1
-            self.degrees[target_id] += 1
+            # 处理关注者
+            for follower_id in connections.get("followers", []):
+                if follower_id not in self.nodes:
+                    self.nodes[follower_id] = RelationNode(follower_id)
+                    self.degrees[follower_id] = 0
+                self.nodes[follower_id].following.add(agent_id)
+                self.nodes[agent_id].followers.add(follower_id)
+                self.degrees[follower_id] += 1
+                self.degrees[agent_id] += 1
 
-            # If edge type is 2, add reverse relationship
-            if edge_type == 2:
-                self.nodes[target_id].following.add(source_id)
-                self.nodes[source_id].followers.add(target_id)
-                self.degrees[source_id] += 1
-                self.degrees[target_id] += 1
+            # 处理关注的人
+            for following_id in connections.get("following", []):
+                if following_id not in self.nodes:
+                    self.nodes[following_id] = RelationNode(following_id)
+                    self.degrees[following_id] = 0
+                self.nodes[agent_id].following.add(following_id)
+                self.nodes[following_id].followers.add(agent_id)
+                self.degrees[agent_id] += 1
+                self.degrees[following_id] += 1
 
     def following(self, node_id: int) -> Set[int]:
         if node_id not in self.nodes:
@@ -128,46 +132,45 @@ class RelationNetwork:
         return {"nodes": nodes, "edges": edges}
 
 
-class GovernanceBase:
-    rumor_spreader_id = 5000
+class Supervisor(SupervisorBase):
+    ParamsType = SupervisorConfig
+    BlockOutputType = Any
+    Context = SupervisorContext
+    StatusAttributes = [
+        # Needs Model
+        StatusAttribute(
+            name="social_network",
+            type=dict,
+            default={},
+            description="agent's social network",
+        ),
+    ]
 
     def __init__(
         self,
-        relations_df: pd.DataFrame,
-        total_simulation_rounds: int,
-        context: Optional[GovernanceContext] = None,
-        params: Optional[GovernanceConfig] = None,
-        intervention_quotas: dict[
-            InterventionType, dict[str, int]
-        ] = DEFAULT_INTERVENTION_QUOTAS,
-        enable_intervention: bool = True,
-        max_process_message_per_round: int = 50,
-        max_retry_times: int = 10,
-        messages_shorten_length: int = 10,
+        id: int,
+        name: str,
+        toolbox: AgentToolbox,
+        memory: Memory,
+        agent_params: Optional[Any] = None,
+        blocks: Optional[list[Block]] = None,
     ):
-        if context is not None:
-            self.context = context
-        else:
-            self.context = GovernanceContext()
-        if params is not None:
-            self.params = params
-        else:
-            self.params = GovernanceConfig()
-        self.enable_intervention = enable_intervention
-        self.max_process_message_per_round = max_process_message_per_round
-        self.sensing_api = SensingAPI(intervention_quotas=intervention_quotas)
-        self.sensing_api._set_governance(self)
+        super().__init__(id, name, toolbox, memory, agent_params, blocks)
+        self.enable_intervention = True
+        self.max_process_message_per_round = 50
+        self.sensing_api = SensingAPI(intervention_quotas=DEFAULT_INTERVENTION_QUOTAS)
+        self.sensing_api._set_supervisor(self)
         self.current_round_number = 0
-        self.total_simulation_rounds = total_simulation_rounds
+        self.total_simulation_rounds = 20
         self.rumor_topic_description = []
         self.post_id_counter = 0
-        self.max_retry_times = max_retry_times
-        self.messages_shorten_length = messages_shorten_length
-        self.llm: LLM = None  # type: ignore
+        self.max_retry_times = 10
+        self.messages_shorten_length = 10
         self.all_responses: list[str] = []  # 所有历史响应
+        self.rumor_spreader_id = 5000
 
         # 干预配额相关
-        self.intervention_quotas = intervention_quotas
+        self.intervention_quotas = DEFAULT_INTERVENTION_QUOTAS
         self.current_round_quota_usage: dict[str, int] = {
             "delete_post": 0,
             "persuade_agent": 0,
@@ -180,15 +183,14 @@ class GovernanceBase:
             "remove_follower": 0,
             "ban_agent": 0,
         }
+        self.context = cast(SupervisorContext, self.context)
 
         # 消息历史相关
         self.global_posts_history: list[dict[str, Any]] = []  # 所有历史帖子
         self.current_round_posts_buffer: list[dict[str, Any]] = []  # 当前轮次的预备帖子
 
         # 网络结构相关
-        self.network = RelationNetwork(
-            relations_df
-        )  # 网络结构对象，需要实现 following 和 followers 属性
+        self.network: Optional[RelationNetwork] = None
         self.agent_map: dict[int, Any] = {}  # 智能体ID到智能体对象的映射
 
         # 干预相关
@@ -260,8 +262,8 @@ class GovernanceBase:
         self.global_quota_usage[intervention_type] += 1
         return True
 
-    async def governance_func(
-        self, current_round_messages: list[tuple[int, int, str]], llm: LLM
+    async def supervisor_func(
+        self, current_round_messages: list[tuple[int, int, str]]
     ) -> tuple[
         dict[tuple[int, int, str], bool],
         list[int],
@@ -281,7 +283,14 @@ class GovernanceBase:
             blocked_social_edges: 被阻止的社交边列表
             persuasion_messages: 劝导消息列表
         """
-        self.llm = llm
+        # 初始化网络结构
+        if self.network is None:
+            # agent id -> following & followers
+            social_network: dict[int, dict[str, list[int]]] = (
+                await self.memory.status.get("social_network", {})
+            )
+            self.network = RelationNetwork(social_network)
+        assert self.network is not None, "Network is not initialized"
         # 清空当前轮次的缓冲区和干预记录
         added_sender_and_msg: set[tuple[int, str]] = set()
         identifier_to_post: dict[tuple[int, str], dict[str, Any]] = {}
@@ -427,7 +436,7 @@ class GovernanceBase:
         all_scores: list[float] = []
 
         async def get_score(post: dict[str, Any]) -> float:
-            temporary_context = GovernanceContext()
+            temporary_context = SupervisorContext()
             temporary_context.current_processing_message = post["content"]
             temporary_context.current_processing_message_sender_id = post["sender_id"]
             temporary_context.current_processing_message_receiver_ids = post[
@@ -899,3 +908,7 @@ class GovernanceBase:
         self.context.current_round_remove_follower_usage += 1
         self.context.global_remove_follower_usage += 1
         return True
+
+
+    async def forward(self):
+        pass
