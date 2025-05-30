@@ -541,7 +541,7 @@ Answer only YES or NO, in JSON format, e.g. {{"should_respond": "YES"}}"""
 
 Generate an appropriate response that:
 1. Matches my personality and background
-2. Maintains natural conversation flow
+2. Answer from a first person perspective
 3. Is concise (under 100 characters)
 4. Reflects our relationship level
 5. Ends the conversation when it is natural

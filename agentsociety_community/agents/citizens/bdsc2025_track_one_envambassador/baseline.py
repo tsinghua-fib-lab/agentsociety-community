@@ -203,28 +203,32 @@ class BaselineEnvAmbassador(EnvAgentBase):
         
         # Phase 1: Multi-step Sensing        
         for _ in range(5):
-            # Construct the sense prompt based on previously gathered information
-            await self.sense_prompt.format(context=self.context)
-            sense_prompt_formatted = self.sense_prompt.formatted_string
-            
-            # Get the LLM's next sensing action using function calling
-            sense_response = await self.llm.atext_request(
-                [{"role": "user", "content": sense_prompt_formatted}],
-                tools=self.sence_functions, # type: ignore
-                tool_choice="auto"
-            ) # type: ignore
-            
-            # Extract the function call information
-            sense_response = sense_response.choices[0].message
-            function_name = sense_response.tool_calls[0].function.name
-            function_args = jsonc.loads(sense_response.tool_calls[0].function.arguments)
-            get_logger().info(f"Function name: {function_name}, Function args: {function_args}")
-            
-            # Check if sensing is complete
-            if function_name == "sense_complete":
-                reasoning = function_args.get("reasoning", "No reasoning provided")
-                get_logger().info(f"Ambassador {self.id} sensing complete. Reasoning: {reasoning}")
-                break
+            try:
+                # Construct the sense prompt based on previously gathered information
+                await self.sense_prompt.format(context=self.context)
+                sense_prompt_formatted = self.sense_prompt.formatted_string
+                
+                # Get the LLM's next sensing action using function calling
+                sense_response = await self.llm.atext_request(
+                    [{"role": "user", "content": sense_prompt_formatted}],
+                    tools=self.sence_functions, # type: ignore
+                    tool_choice="auto"
+                ) # type: ignore
+                
+                # Extract the function call information
+                sense_response = sense_response.choices[0].message
+                function_name = sense_response.tool_calls[0].function.name
+                function_args = jsonc.loads(sense_response.tool_calls[0].function.arguments)
+                get_logger().info(f"Function name: {function_name}, Function args: {function_args}")
+                
+                # Check if sensing is complete
+                if function_name == "sense_complete":
+                    reasoning = function_args.get("reasoning", "No reasoning provided")
+                    get_logger().info(f"Ambassador {self.id} sensing complete. Reasoning: {reasoning}")
+                    break
+            except Exception as e:
+                get_logger().error(f"Ambassador {self.id} sensing failed. Error: {e}")
+                continue
             
             # Execute the sensing action
             if function_name in self.sence_function_mapping:
@@ -285,32 +289,40 @@ class BaselineEnvAmbassador(EnvAgentBase):
             }
         }
         
-        # Get the LLM's comprehensive plan using function calling
-        plan_response = await self.llm.atext_request(
-            [{"role": "user", "content": plan_prompt_formatted}],
-            tools=[planning_function_schema], # type: ignore
-        ) # type: ignore
-        
-        # Extract the action steps from the plan
-        plan_response = plan_response.choices[0].message
-        function_name = plan_response.tool_calls[0].function.name
-        plan_args = jsonc.loads(plan_response.tool_calls[0].function.arguments)
-        get_logger().info(f"Plan response: {plan_args}")
-        try:
-            strategy_data = {
-                "situation_analysis": plan_args['situation_analysis'],
-                "recommended_strategy": plan_args['recommended_strategy']
-            }
-            self.context.action_strategy_this_round = strategy_data
-            self.context.action_strategy_history.append(strategy_data)
-        except:
-            get_logger().error(f"Ambassador {self.id} planning strategy failed. Parsing plan response error: {plan_args}")
-            strategy_data = {
-                "situation_analysis": "Don't know the current situation.",
-                "recommended_strategy": "Don't know the recommended strategy."
-            }
-            self.context.action_strategy_this_round = strategy_data
-            self.context.action_strategy_history.append(strategy_data)
+        for _ in range(3):
+            try:
+                # Get the LLM's comprehensive plan using function calling
+                plan_response = await self.llm.atext_request(
+                    [{"role": "user", "content": plan_prompt_formatted}],
+                    tools=[planning_function_schema], # type: ignore
+                    tool_choice={"type": "function", "function": {"name": "create_action_plan"}},
+                ) # type: ignore
+                
+                # Extract the action steps from the plan
+                plan_response = plan_response.choices[0].message
+                function_name = plan_response.tool_calls[0].function.name
+                plan_args = jsonc.loads(plan_response.tool_calls[0].function.arguments)
+                get_logger().info(f"Plan response: {plan_args}")
+            except Exception as e:
+                get_logger().error(f"Ambassador {self.id} planning strategy failed. Error: {e}")
+                continue
+            
+            try:
+                strategy_data = {
+                    "situation_analysis": plan_args['situation_analysis'],
+                    "recommended_strategy": plan_args['recommended_strategy']
+                }
+                self.context.action_strategy_this_round = strategy_data
+                self.context.action_strategy_history.append(strategy_data)
+                break
+            except:
+                get_logger().error(f"Ambassador {self.id} planning strategy failed. Parsing plan response error: {plan_args}")
+                strategy_data = {
+                    "situation_analysis": "Don't know the current situation.",
+                    "recommended_strategy": "Don't know the recommended strategy."
+                }
+                self.context.action_strategy_this_round = strategy_data
+                self.context.action_strategy_history.append(strategy_data)
 
     async def execute_action(self):
         """Execute the action."""
