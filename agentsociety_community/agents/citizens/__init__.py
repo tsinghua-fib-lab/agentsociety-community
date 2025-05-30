@@ -18,6 +18,18 @@ if TYPE_CHECKING:
     from .bdsc2025_track_two_rumor_spreader.rumor_spreader import RumorSpreader
 
 
+def _import_track_one_env_citizen() -> Type[CitizenAgentBase]:
+    from .bdsc2025_track_one_envcitizen.track_one_envcitizen import TrackOneEnvCitizen
+
+    return TrackOneEnvCitizen
+
+
+def _import_track_one_env_ambassador() -> Type[CitizenAgentBase]:
+    from .bdsc2025_track_one_envambassador.baseline import BaselineEnvAmbassador
+
+    return BaselineEnvAmbassador
+
+
 def _import_env_citizen() -> Type[CitizenAgentBase]:
     from .bdsc2025_track_two_envcitizen.envcitizen import EnvCitizen
 
@@ -31,6 +43,10 @@ def _import_rumor_spreader() -> Type[CitizenAgentBase]:
 
 
 def __getattr__(name: str) -> Type[CitizenAgentBase]:
+    if name == "TrackOneEnvCitizen":
+        return _import_track_one_env_citizen()
+    if name == "TrackOneEnvAmbassador":
+        return _import_track_one_env_ambassador()
     if name == "EnvCitizen":
         return _import_env_citizen()
     if name == "RumorSpreader":
@@ -38,7 +54,7 @@ def __getattr__(name: str) -> Type[CitizenAgentBase]:
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["EnvCitizen", "RumorSpreader"]
+__all__ = ["TrackOneEnvCitizen", "TrackOneEnvAmbassador", "EnvCitizen", "RumorSpreader"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
@@ -46,6 +62,8 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[CitizenAgentBase]]]:
     Use this function to get all the citizen classes.
     """
     return {
+        "TrackOneEnvCitizen": _import_track_one_env_citizen,
+        "TrackOneEnvAmbassador": _import_track_one_env_ambassador,
         "EnvCitizen": _import_env_citizen,
         "RumorSpreader": _import_rumor_spreader,
     }

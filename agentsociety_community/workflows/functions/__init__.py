@@ -50,9 +50,82 @@ def _import_gather_survey_results_bdsc_2025_track_two() -> Type[FunctionType]:
     return gather_survey_results_bdsc_2025_track_two
 
 
+def _import_insert_citizen_information_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        insert_citizen_information
+    
+    return insert_citizen_information
+
+
+def _import_gather_survey_results_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        gather_survey_results
+    
+    return gather_survey_results
+
+
+def _import_gather_carbon_emission_results_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        gather_carbon_emission_results
+    
+    return gather_carbon_emission_results
+
+
+def _import_gather_promotion_results_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        gather_promotion_results
+    
+    return gather_promotion_results
+
+
+def _import_gather_communication_history_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        gather_communication_history
+    
+    return gather_communication_history
+
+
+def _import_delete_ambassador_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        delete_ambassador
+    
+    return delete_ambassador
+
+
+def _import_start_emission_log_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        start_emission_log
+    
+    return start_emission_log
+
+
+def _import_send_carbon_awareness_survey_bdsc_2025_track_one() -> Type[FunctionType]:
+    from .bdsc_2025_track_one.workflow import \
+        send_canbon_awareness_survey
+    
+    return send_canbon_awareness_survey
+
+
+
 def __getattr__(name: str) -> Type[FunctionType]:
     if name == "do_nothing":
         return _import_do_nothing()
+    if name == "insert_citizen_information_bdsc_2025_track_one":
+        return _import_insert_citizen_information_bdsc_2025_track_one()
+    if name == "gather_survey_results_bdsc_2025_track_one":
+        return _import_gather_survey_results_bdsc_2025_track_one()
+    if name == "gather_carbon_emission_results_bdsc_2025_track_one":
+        return _import_gather_carbon_emission_results_bdsc_2025_track_one()
+    if name == "gather_promotion_results_bdsc_2025_track_one":
+        return _import_gather_promotion_results_bdsc_2025_track_one()
+    if name == "gather_communication_history_bdsc_2025_track_one":
+        return _import_gather_communication_history_bdsc_2025_track_one()
+    if name == "delete_ambassador_bdsc_2025_track_one":
+        return _import_delete_ambassador_bdsc_2025_track_one()
+    if name == "start_emission_log_bdsc_2025_track_one":
+        return _import_start_emission_log_bdsc_2025_track_one()
+    if name == "send_carbon_awareness_survey_bdsc_2025_track_one":
+        return _import_send_carbon_awareness_survey_bdsc_2025_track_one()
     if name == "init_simulation_context_bdsc_2025_track_two":
         return _import_init_simulation_context_bdsc_2025_track_two()
     if name == "send_rumor_spread_survey_bdsc_2025_track_two":
@@ -64,6 +137,14 @@ def __getattr__(name: str) -> Type[FunctionType]:
 
 __all__ = [
     "do_nothing",
+    "insert_citizen_information_bdsc_2025_track_one",
+    "gather_survey_results_bdsc_2025_track_one",
+    "gather_carbon_emission_results_bdsc_2025_track_one",
+    "gather_promotion_results_bdsc_2025_track_one",
+    "gather_communication_history_bdsc_2025_track_one",
+    "delete_ambassador_bdsc_2025_track_one",
+    "start_emission_log_bdsc_2025_track_one",
+    "send_canbon_awareness_survey_bdsc_2025_track_one",
     "init_simulation_context_bdsc_2025_track_two",
     "send_rumor_spread_survey_bdsc_2025_track_two",
     "gather_survey_results_bdsc_2025_track_two",
@@ -79,4 +160,12 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[FunctionType]]]:
         "init_simulation_context_bdsc_2025_track_two": _import_init_simulation_context_bdsc_2025_track_two,
         "send_rumor_spread_survey_bdsc_2025_track_two": _import_send_rumor_spread_survey_bdsc_2025_track_two,
         "gather_survey_results_bdsc_2025_track_two": _import_gather_survey_results_bdsc_2025_track_two,
+        "insert_citizen_information_bdsc_2025_track_one": _import_insert_citizen_information_bdsc_2025_track_one,
+        "gather_survey_results_bdsc_2025_track_one": _import_gather_survey_results_bdsc_2025_track_one,
+        "gather_carbon_emission_results_bdsc_2025_track_one": _import_gather_carbon_emission_results_bdsc_2025_track_one,
+        "gather_promotion_results_bdsc_2025_track_one": _import_gather_promotion_results_bdsc_2025_track_one,
+        "gather_communication_history_bdsc_2025_track_one": _import_gather_communication_history_bdsc_2025_track_one,
+        "delete_ambassador_bdsc_2025_track_one": _import_delete_ambassador_bdsc_2025_track_one,
+        "start_emission_log_bdsc_2025_track_one": _import_start_emission_log_bdsc_2025_track_one,
+        "send_canbon_awareness_survey_bdsc_2025_track_one": _import_send_carbon_awareness_survey_bdsc_2025_track_one,
     }
