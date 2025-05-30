@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Callable, Dict, Type
 from agentsociety.agent import SupervisorBase
 
 if TYPE_CHECKING:
+    from .bdsc2025_track_two_supervisor.do_nothing_supervisor import \
+        DoNothingSupervisor
     from .bdsc2025_track_two_supervisor.supervisor import BDSC2025Supervisor
 
 
@@ -25,13 +27,22 @@ def _import_bdsc_2025_supervisor() -> Type[SupervisorBase]:
     return BDSC2025Supervisor
 
 
+def _import_do_nothing_supervisor() -> Type[SupervisorBase]:
+    from .bdsc2025_track_two_supervisor.do_nothing_supervisor import \
+        DoNothingSupervisor
+
+    return DoNothingSupervisor
+
+
 def __getattr__(name: str) -> Type[SupervisorBase]:
     if name == "BDSC2025Supervisor":
         return _import_bdsc_2025_supervisor()
+    if name == "DoNothingSupervisor":
+        return _import_do_nothing_supervisor()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["BDSC2025Supervisor"]
+__all__ = ["BDSC2025Supervisor", "DoNothingSupervisor"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
@@ -40,4 +51,5 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
     """
     return {
         "BDSC2025Supervisor": _import_bdsc_2025_supervisor,
+        "DoNothingSupervisor": _import_do_nothing_supervisor,
     }
