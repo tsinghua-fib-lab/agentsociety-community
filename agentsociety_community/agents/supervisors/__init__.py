@@ -16,11 +16,11 @@ from typing import TYPE_CHECKING, Callable, Dict, Type
 from agentsociety.agent import SupervisorBase
 
 if TYPE_CHECKING:
-    from .bdsc_2025_supervisor.supervisor import Supervisor
+    from .bdsc2025_track_two_supervisor.supervisor import Supervisor
 
 
 def _import_bdsc_2025_supervisor() -> Type[SupervisorBase]:
-    from .bdsc_2025_supervisor.supervisor import Supervisor
+    from .bdsc2025_track_two_supervisor.supervisor import Supervisor
 
     return Supervisor
 
