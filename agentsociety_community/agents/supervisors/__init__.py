@@ -9,6 +9,7 @@ How to add a new supervisor:
 5. add the supervisor class to the return value of get_type_to_cls_dict function.
 """
 
+from __future__ import annotations
 from typing import Callable, Dict, Type, TYPE_CHECKING
 
 
