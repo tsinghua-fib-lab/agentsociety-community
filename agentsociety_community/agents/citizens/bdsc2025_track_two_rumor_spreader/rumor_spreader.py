@@ -1,7 +1,6 @@
 import asyncio
 import random
 import time
-from collections import deque
 from typing import Any, Optional
 
 from agentsociety.agent import (Agent, AgentToolbox, Block, CitizenAgentBase,
@@ -159,8 +158,8 @@ class RumorSpreader(CitizenAgentBase):
         ),
         StatusAttribute(
             name="dialog_queue",
-            type=deque,
-            default=deque(maxlen=3),
+            type=list,
+            default=[],
             description="agent's dialog queue",
         ),
         StatusAttribute(
