@@ -1,6 +1,6 @@
 [project]
 name = "agentsociety-community"
-version = "0.2.1"
+version = "0.2.2"
 description = "A community library for customizing agent/block for AgentSociety"
 authors = [
     { name = "Jun Zhang", email = "zhangjun990222@gmail.com" },
