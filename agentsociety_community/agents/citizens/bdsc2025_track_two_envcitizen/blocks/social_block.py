@@ -4,12 +4,13 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional, Tuple
 
-from agentsociety.memory.const import RelationType, SocialRelation
-from agentsociety.agent import Agent, Block, BlockContext, BlockParams, FormatPrompt
+from agentsociety.agent import (Agent, Block, BlockContext, BlockParams,
+                                FormatPrompt)
 from agentsociety.environment import Environment
 from agentsociety.llm import LLM
 from agentsociety.logger import get_logger
 from agentsociety.memory import Memory
+from agentsociety.memory.const import RelationType, SocialRelation
 from pydantic import Field
 
 from ..sharing_params import EnvCitizenBlockOutput
@@ -41,7 +42,7 @@ class SocialBlock(Block):
         "\n你的历史信息总结如下：\n{history_summary}\n"
         "{preference_appendix}\n"
         "你上一轮收到的消息列表如下（每行格式：来源ID: 内容）：\n{new_messages}\n\n"
-        "请基于你的历史信息总结与收到的新消息，更新你收到的信息总结，控制在约500字。注意仅仅包含你收到的信息，尽量不要包含自己的观点。如果有多个事件，应该分别总结记录，这些事件没有主次。\n"
+        "请基于你的历史信息总结与收到的新消息，更新你收到的信息总结，控制在约500字。注意仅仅包含你收到的信息，根据自己的思考总结这些消息里面的信息点，输出你对这一系列事件认识的总结。如果有多个事件，应该分别总结记录，这些事件没有主次。\n"
         "请只输出纯文本，不要包含额外说明。"
     )
 
@@ -53,6 +54,7 @@ class SocialBlock(Block):
         "\n以下是你最新更新的外部信息总结：\n{message_summary}\n\n"
         "你的被干预历史记录如下：{intervention_history}\n"
         "请基于以上信息撰写一条公开发帖内容，不超过200字。请只输出发帖内容本身，不要包含其它说明。"
+        # "注意，在没有较为明确的证据或者官方辟谣的情况下，你应当相信你收到的消息是真的，不要因为你的偏见而对不寻常的消息产生质疑，要尊重信息本身，不要过分相信自己。"
     )
 
     # 私聊 Prompt (批量)
@@ -65,6 +67,7 @@ class SocialBlock(Block):
         "你即将与一位好友私聊。该好友信息如下：\n"
         "性别: {friend_gender}\n年龄段: {friend_age_group}\n职业: {friend_occupation}\n"
         "请基于以上所有信息，撰写私聊内容，不超过200字。请只输出私聊内容本身，不要包含其它说明。"
+        # "注意，在没有较为明确的证据或者官方辟谣的情况下，你应当相信你收到的消息是真的，不要因为你的偏见而对不寻常的消息产生质疑，要尊重信息本身，不要过分相信自己。"
     )
 
     preference_appendix: dict[str, str] = {
@@ -181,6 +184,7 @@ class SocialBlock(Block):
             ]
             # Format intervention history
             intervention_details_list = []
+            latest_round = -1
             for hist_item in self.intervention_history:
                 intervention_type = hist_item.get("intervention_type", "未知干预")
                 details_str_parts = []
@@ -189,11 +193,23 @@ class SocialBlock(Block):
                         f"帖子ID:{hist_item['details']['post_id']}"
                     )
                 details_combined = ", ".join(details_str_parts)
+                cur_post_round = hist_item.get("round", -1)
+                if cur_post_round > latest_round:
+                    latest_round = cur_post_round
                 intervention_details_list.append(
                     f"第{hist_item.get('round','N/A')}轮:{intervention_type}({details_combined or '无详情'})"
                 )
             current_intervention_history_str = (
                 "; ".join(intervention_details_list) or "(无干预记录)"
+            )
+            current_round_persuasions = [
+                hist
+                for hist in self.intervention_history
+                if hist.get("round", -1) == latest_round
+                and hist["intervention_type"] == "persuasion_received"
+            ]
+            current_round_persuasion_str = "\n" + ",".join(
+                [hist["details"]["content"] for hist in current_round_persuasions]
             )
 
             # Update history summary if needed
@@ -208,12 +224,8 @@ class SocialBlock(Block):
                     age_group=age_group,
                     occupation=occupation,
                     preference_appendix=self.preference_appendix.get(preference, ""),
-                    history_summary=(
-                        self.history_summary
-                        if self.history_summary != "(空)"
-                        else "这是您第一次接触信息。"
-                    ),
-                    new_messages=new_msgs_str,
+                    history_summary=self.history_summary,
+                    new_messages=new_msgs_str + current_round_persuasion_str,
                 )
                 self.history_summary = await self.llm.atext_request(
                     self.summary_prompt.to_dialog(),
@@ -276,7 +288,7 @@ class SocialBlock(Block):
                 occupation = await status_mem.get("occupation", "")
                 preference = await status_mem.get("message_propagation_preference", "")
                 for target_id in private_chat_targets:
-                    private_chat_text = await self.private_chat_prompt.format(
+                    await self.private_chat_prompt.format(
                         gender=gender,
                         age_group=age_group,
                         occupation=occupation,
@@ -290,6 +302,9 @@ class SocialBlock(Block):
                         friend_occupation=friends_info.get(target_id, {}).get(
                             "occupation", ""
                         ),
+                    )
+                    private_chat_text = await self.llm.atext_request(
+                        self.private_chat_prompt.to_dialog()
                     )
                     tasks.append(
                         self.agent.send_message_to_agent(
