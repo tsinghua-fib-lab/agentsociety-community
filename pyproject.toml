@@ -1,6 +1,6 @@
 [project]
 name = "agentsociety-community"
-version = "0.2.0"
+version = "0.2.1"
 description = "A community library for customizing agent/block for AgentSociety"
 authors = [
     { name = "Jun Zhang", email = "zhangjun990222@gmail.com" },
@@ -14,7 +14,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "agentsociety==1.5.0a1",
+    "agentsociety==1.5.0a2",
 ]
 
 [project.urls]
