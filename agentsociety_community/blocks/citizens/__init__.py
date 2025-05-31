@@ -14,22 +14,51 @@ from typing import Callable, Dict, Type, TYPE_CHECKING
 from agentsociety.agent import Block
 
 if TYPE_CHECKING:
-    from .example import ExampleCitizenBlock
+    from .cityagent import (
+        MobilityBlock,
+        SocialBlock,
+        EconomyBlock,
+        OtherBlock,
+    )
 
 
-def _import_example_citizen_block() -> Type[Block]:
-    from .example import ExampleCitizenBlock
+def _import_cityagent_mobility_block() -> Type[Block]:
+    from .cityagent import MobilityBlock
 
-    return ExampleCitizenBlock
+    return MobilityBlock
+
+
+def _import_cityagent_social_block() -> Type[Block]:
+    from .cityagent import SocialBlock
+
+    return SocialBlock
+
+
+def _import_cityagent_economy_block() -> Type[Block]:
+    from .cityagent import EconomyBlock
+
+    return EconomyBlock
+
+
+def _import_cityagent_other_block() -> Type[Block]:
+    from .cityagent import OtherBlock
+
+    return OtherBlock
 
 
 def __getattr__(name: str) -> Type[Block]:
-    if name == "ExampleCitizenBlock":
-        return _import_example_citizen_block()
+    if name == "MobilityBlock":
+        return _import_cityagent_mobility_block()
+    elif name == "SocialBlock":
+        return _import_cityagent_social_block()
+    elif name == "EconomyBlock":
+        return _import_cityagent_economy_block()
+    elif name == "OtherBlock":
+        return _import_cityagent_other_block()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["ExampleCitizenBlock"]
+__all__ = ["MobilityBlock", "SocialBlock", "EconomyBlock", "OtherBlock"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[Block]]]:
@@ -37,5 +66,8 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[Block]]]:
     Use this function to get all the citizen classes.
     """
     return {
-        "ExampleCitizenBlock": _import_example_citizen_block,
+        "MobilityBlock": _import_cityagent_mobility_block,
+        "SocialBlock": _import_cityagent_social_block,
+        "EconomyBlock": _import_cityagent_economy_block,
+        "OtherBlock": _import_cityagent_other_block,
     }
