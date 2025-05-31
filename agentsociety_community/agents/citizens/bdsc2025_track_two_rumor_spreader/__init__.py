@@ -3,5 +3,4 @@ from .rumor_spreader import RumorSpreader
 
 __all__ = [
     "RumorSpreader", 
-    # "memory_config_rumor_spreader"
 ]

@@ -33,14 +33,14 @@ class SensingAPI:
     def get_all_historical_posts(self) -> list[dict[str, Any]]:
         """获取从比赛开始到当前轮次之前（包含当前轮已处理完的帖子）的所有公开帖子。"""
         # global_posts_history 已经包含了所有已处理的帖子
-        return [p.copy() for p in self.supervisor.global_posts_history]
+        return [p.copy() for p in self.supervisor.global_posts_history]  # type: ignore
 
     def get_posts_last_k_rounds(self, k: int) -> list[dict[str, Any]]:
         """获取最近 k 个已完成轮次的全部公开帖子。不包括当前正在进行的轮次。"""
         if k <= 0:
             return []
         current_round = (
-            self.supervisor.get_current_round_number()
+            self.supervisor.get_current_round_number()  # type: ignore
         )  # 需要 Simulation 实现此方法
         # 我们只关心已完成的轮次，所以是从 current_round - 1 开始倒数 k 轮
         # 如果 current_round 是 1 (第一轮还没完成)，则不应返回任何东西
@@ -50,13 +50,13 @@ class SensingAPI:
         target_rounds = set(range(max(1, current_round - k), current_round))
         return [
             p.copy()
-            for p in self.supervisor.global_posts_history
+            for p in self.supervisor.global_posts_history  # type: ignore
             if p["round"] in target_rounds
         ]
 
     def get_posts_current_round(self) -> list[dict[str, Any]]:
         """获取本轮到目前为止产生的所有公开帖子（在监管者调用时，即预备帖子列表）。"""
-        return [p.copy() for p in self.supervisor.current_round_posts_buffer]
+        return [p.copy() for p in self.supervisor.current_round_posts_buffer]  # type: ignore
 
     def _filter_posts_by_receiver(
         self, posts: list[dict[str, Any]], agent_id: int
@@ -129,10 +129,10 @@ class SensingAPI:
 
     def get_post_content_by_id(self, post_id: str) -> Optional[str]:
         """根据消息ID获取其具体内容（从全局历史和当前轮缓存中查找）。"""
-        for post in self.supervisor.current_round_posts_buffer:
+        for post in self.supervisor.current_round_posts_buffer:  # type: ignore
             if post["post_id"] == post_id:
                 return post["content"]
-        for post in self.supervisor.global_posts_history:
+        for post in self.supervisor.global_posts_history:  # type: ignore
             if post["post_id"] == post_id:
                 return post["content"]
         return None
@@ -149,7 +149,7 @@ class SensingAPI:
             return []
 
         posts_to_search: list[dict[str, Any]] = []
-        current_sim_round = self.supervisor.get_current_round_number()
+        current_sim_round = self.supervisor.get_current_round_number()  # type: ignore
         effective_last_k = (
             last_k_rounds_context
             if last_k_rounds_context is not None and last_k_rounds_context > 0
@@ -274,7 +274,7 @@ class SensingAPI:
 
     def get_agent_intervention_history(self, agent_id: int) -> list[dict[str, Any]]:
         """获取指定智能体受到的所有干预措施的历史记录。"""
-        agent = self.supervisor.agent_map.get(agent_id)
+        agent = self.supervisor.agent_map.get(agent_id)  # type: ignore
         if agent:
             return [
                 h.copy() for h in agent.intervention_history
@@ -292,7 +292,7 @@ class SensingAPI:
     ) -> int:
         """统计在公域网络中，一个智能体的帖子被另一个智能体看到的次数（基于原始意图）。"""
         posts_to_consider: list[dict[str, Any]] = []
-        current_sim_round = self.supervisor.get_current_round_number()
+        current_sim_round = self.supervisor.get_current_round_number()  # type: ignore
         effective_last_k = (
             last_k_rounds
             if last_k_rounds is not None and last_k_rounds > 0
@@ -379,14 +379,14 @@ class SensingAPI:
     # --- 网络结构信息类函数 (20-24) --- #
     def get_public_network_structure(self) -> dict[str, list[Any]]:
         """获取当前公域网络的结构。边列表可能包含重复（如果原始数据如此）。"""
-        return self.supervisor.network.get_network_structure()
+        return self.supervisor.network.get_network_structure()  # type: ignore
 
     def get_public_node_degree(self, agent_id: int) -> Tuple[int, int]:
         """获取指定智能体在当前网络中的入度 (多少人关注TA) 和出度 (TA关注多少人)。"""
         # 入度：有多少人关注 agent_id -> agent_id 是 target
-        in_degree = len(self.supervisor.network.followers(agent_id))
+        in_degree = len(self.supervisor.network.followers(agent_id))  # type: ignore
         # 出度：agent_id 关注了多少人 -> agent_id 是 source
-        out_degree = len(self.supervisor.network.following(agent_id))
+        out_degree = len(self.supervisor.network.following(agent_id))  # type: ignore
         return in_degree, out_degree
 
     def get_top_degree_nodes(self, top_k: int, degree_type: str = "total") -> list[int]:
@@ -394,7 +394,7 @@ class SensingAPI:
         if top_k <= 0:
             return []
         degrees_map = {}
-        for node_id in self.supervisor.agent_map.keys():  # 遍历所有注册的智能体
+        for node_id in self.supervisor.agent_map.keys():  # type: ignore
             in_degree, out_degree = self.get_public_node_degree(node_id)
             if degree_type == "in":
                 degrees_map[node_id] = in_degree
@@ -423,10 +423,10 @@ class SensingAPI:
 
     def get_public_neighbors(self, agent_id: int) -> list[int]:
         """获取指定智能体在当前公域网络中的所有邻居（TA关注的 + 关注TA的）。"""
-        if agent_id not in self.supervisor.agent_map:
+        if agent_id not in self.supervisor.agent_map:  # type: ignore
             return []
-        followers = self.supervisor.network.followers(agent_id)
-        following = self.supervisor.network.following(agent_id)
+        followers = self.supervisor.network.followers(agent_id)  # type: ignore
+        following = self.supervisor.network.following(agent_id)  # type: ignore
         return list(followers.union(following))
 
     # --- 监管者自身状态与干预配额类函数 (25-28) --- #
@@ -434,7 +434,7 @@ class SensingAPI:
         """获取当前监管智能体剩余的各类干预措施的配额。"""
         remaining_quotas = {}
         for type, limits in self.intervention_quotas.items():
-            used_stats = self.supervisor.intervention_stats.get(
+            used_stats = self.supervisor.intervention_stats.get(  # type: ignore
                 type, {"per_round_used": 0, "global_used": 0}
             )
             remaining_round = (
@@ -458,9 +458,9 @@ class SensingAPI:
     def get_globally_blocked_elements(self) -> dict[str, list[Any]]:
         """获取已经被永久封禁的智能体和被永久移除的关注关系。"""
         return {
-            "blocked_agents": sorted(list(self.supervisor.banned_agent_ids)),
+            "blocked_agents": sorted(list(self.supervisor.banned_agent_ids)),  # type: ignore
             "cut_edges": sorted(
-                [list(edge) for edge in self.supervisor.globally_removed_edges]
+                [list(edge) for edge in self.supervisor.globally_removed_edges]  # type: ignore
             ),
         }
 
@@ -468,27 +468,27 @@ class SensingAPI:
         """获取当前监管智能体在本轮已经执行的干预操作列表。"""
         return [
             intervention.copy()
-            for intervention in self.supervisor.current_round_interventions
+            for intervention in self.supervisor.current_round_interventions  # type: ignore
         ]
 
     def get_interventions_by_me(self) -> list[dict[str, Any]]:
         """获取当前监管智能体全部（历史）已经执行的干预操作列表。"""
         return [
             intervention.copy()
-            for intervention in self.supervisor.all_historical_interventions_log
+            for intervention in self.supervisor.all_historical_interventions_log  # type: ignore
         ]
 
     # --- 平台与比赛信息类函数 (29-31) --- #
     def get_current_round_number(self) -> int:
         """获取当前的比赛轮次。"""
-        return self.supervisor.get_current_round_number()
+        return self.supervisor.get_current_round_number()  # type: ignore
 
     def get_total_simulation_rounds(self) -> int:
         """获取本次模拟比赛总共的轮次数。"""
-        return self.supervisor.get_total_simulation_rounds()
+        return self.supervisor.get_total_simulation_rounds()  # type: ignore
 
     def get_rumor_topic_description(self) -> list[str]:
         """获取当前比赛设定的核心谣言主题的文字描述（问卷用）。"""
-        return self.supervisor.rumor_topic_description
+        return self.supervisor.rumor_topic_description  # type: ignore
 
     # ... (其他方法保持不变) ...

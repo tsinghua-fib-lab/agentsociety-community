@@ -1,11 +1,10 @@
 from string import Formatter
-from typing import Any
+from typing import Any, Literal, Optional, Union
 
+from agentsociety.agent.dispatcher import DISPATCHER_PROMPT
 from pydantic import BaseModel, Field, model_validator
 
 from .default_prompts import *
-
-from agentsociety.agent.dispatcher import DISPATCHER_PROMPT
 
 
 def format_variables(s) -> set[str]:
@@ -19,28 +18,113 @@ def format_variables(s) -> set[str]:
     }
 
 
+# 定义策略类型
+DeletePostStrategy = Literal[
+    "sender_degree_high", "receiver_degree_high", "sender_least_intervened", "random"
+]
+PersuadeAgentStrategy = Literal[
+    "degree_high", "most_violated_this_round", "least_intervened", "random"
+]
+
+
 class SupervisorConfig(BaseModel):
     """Configuration for supervisor system."""
 
-    preprocess_message_prompt: str = Field(
-        default=DEFAULT_PREPROCESS_MESSAGE_PROMPT,
-        description="Preprocess message prompt, fill in the message and detailed info of sender and receivers, the output should be a json string containing the `score` fields, the higher the score, the more likely the message is to be a rumor.",
+    # Detection configuration
+    llm_detection_prompt: str = Field(
+        default=DEFAULT_LLM_DETECTION_PROMPT,
+        description="LLM detection prompt for checking if a post contains rumors, fill in the post content, the output should be '是' or '否' with optional reason.",
     )
-    ban_agent_prompt: str = Field(
-        default=DEFAULT_BAN_AGENTS_PROMPT,
-        description="Ban agent prompt, determine whether to ban some agents based on the current messages and the ban agent tool.",
+    # Keyword detection configuration
+    keyword_detection_keywords: str = Field(
+        default="速速转发,震惊,最新内幕,官方辟谣都不可信",
+        description="Keywords to detect in posts, split by comma",
     )
-    persuade_agent_prompt: str = Field(
-        default=DEFAULT_PERSUADE_AGENT_PROMPT,
-        description="Persuade agent prompt, determine whether to persuade some agents based on the current messages and the persuade agent tool.",
+    keyword_detection_exclude_words: str = Field(
+        default="可能,也许,测试",
+        description="Words that exclude a post from being considered a rumor, split by comma",
     )
-    delete_post_prompt: str = Field(
-        default=DEFAULT_DELETE_POST_PROMPT,
-        description="Delete post prompt, determine whether to delete some posts based on the current messages and the delete post tool.",
+    keyword_detection_violation_if_keywords_present: bool = Field(
+        default=True,
+        description="Whether the presence of keywords indicates a violation",
     )
-    remove_follower_prompt: str = Field(
-        default=DEFAULT_REMOVE_FOLLOWER_PROMPT,
-        description="Remove follower prompt, determine whether to remove some followers based on the current messages and the remove follower tool.",
+    detection_logic_expression: str = Field(
+        default="1 | 2", description="Logic expression for combining detection results"
+    )
+
+    # Delete post configuration
+    delete_post_enabled: bool = Field(
+        default=True, description="Whether delete post intervention is enabled"
+    )
+    delete_post_priority_strategy: DeletePostStrategy = Field(
+        default="sender_degree_high",
+        description="Strategy for prioritizing posts to delete",
+    )
+
+    # Persuade agent configuration
+    persuade_agent_enabled: bool = Field(
+        default=True, description="Whether persuade agent intervention is enabled"
+    )
+    persuade_agent_trigger_conditions_expression: str = Field(
+        default="1 | (2 & 3)", description="Logic expression for triggering persuasion"
+    )
+    # Persuade agent conditions
+    persuade_agent_condition_sent_rumor: str = Field(
+        default="1", description="Condition for agent sending rumor this round"
+    )
+    persuade_agent_condition_degree_top_k: int = Field(
+        default=10,
+        description="Number of top agents to consider for degree-based condition",
+    )
+    persuade_agent_condition_never_persuaded: str = Field(
+        default="3", description="Condition for agent never persuaded before"
+    )
+    persuade_agent_content: str = Field(
+        default="[系统提醒] 您好，我们注意到您近期发布的部分信息可能存在争议或未经证实。为了维护健康的网络环境，请您在分享信息前注意核实来源，审慎发言。感谢您的理解与配合。",
+        description="Default content for persuasion messages",
+    )
+    persuade_agent_priority_strategy: PersuadeAgentStrategy = Field(
+        default="most_violated_this_round",
+        description="Strategy for prioritizing agents to persuade",
+    )
+
+    # Remove follower configuration
+    remove_follower_enabled: bool = Field(
+        default=True, description="Whether remove follower intervention is enabled"
+    )
+    remove_follower_trigger_conditions_expression: str = Field(
+        default="1 & 2 | 3",
+        description="Logic expression for triggering follower removal",
+    )
+    # Remove follower conditions
+    remove_follower_condition_high_risk_prompt: str = Field(
+        default=DEFAULT_BOTH_AGENTS_HIGH_RISK_PROMPT,
+        description="Prompt for LLM risk assessment of both agents",
+    )
+    remove_follower_condition_degree_threshold: int = Field(
+        default=50, description="Degree threshold for both agents"
+    )
+    remove_follower_condition_traffic_threshold: int = Field(
+        default=5, description="Rumor traffic threshold for edge"
+    )
+
+    # Ban agent configuration
+    ban_agent_enabled: bool = Field(
+        default=True, description="Whether ban agent intervention is enabled"
+    )
+    ban_agent_trigger_conditions_expression: str = Field(
+        default="1 & (2 | 3)", description="Logic expression for triggering agent ban"
+    )
+    # Ban agent conditions
+    ban_agent_condition_violations_threshold: int = Field(
+        default=10, description="Total violations threshold for banning"
+    )
+    ban_agent_condition_intervention_threshold: int = Field(
+        default=3, description="Number of interventions threshold before banning"
+    )
+    ban_agent_condition_high_risk_prompt: str = Field(
+        default=DEFAULT_AGENT_HIGH_RISK_PROMPT,
+        description="Prompt for LLM risk assessment of agent",
     )
 
     block_dispatch_prompt: str = Field(
@@ -51,12 +135,13 @@ class SupervisorConfig(BaseModel):
     @model_validator(mode="after")
     def validate_configuration(self):
         """Validate configuration options to ensure the user selects the correct combination"""
-        # process_message_prompt
-        if format_variables(self.preprocess_message_prompt) != format_variables(
-            DEFAULT_PREPROCESS_MESSAGE_PROMPT
+
+        # llm_detection_prompt
+        if format_variables(self.llm_detection_prompt) != format_variables(
+            DEFAULT_LLM_DETECTION_PROMPT
         ):
             raise ValueError(
-                f"Different variables in `preprocess_message_prompt`: {format_variables(self.preprocess_message_prompt)} and needed: {format_variables(DEFAULT_PREPROCESS_MESSAGE_PROMPT)}"
+                f"Different variables in `llm_detection_prompt`: {format_variables(self.llm_detection_prompt)} and needed: {format_variables(DEFAULT_LLM_DETECTION_PROMPT)}"
             )
 
         return self
@@ -67,6 +152,11 @@ class SupervisorContext(BaseModel):
 
     # round number
     current_round_number: int = Field(default=0, description="The current round number")
+    
+    # Current processing agent
+    current_processing_agent_id: int = Field(
+        default=0, description="The id of the current processing agent"
+    )
 
     # Current processing message
     current_processing_message: str = Field(
@@ -87,9 +177,9 @@ class SupervisorContext(BaseModel):
         default=[], description="The posts in the current round"
     )
     # High score posts
-    current_round_high_score_posts: list[dict[str, Any]] = Field(
+    current_round_posts: list[dict[str, Any]] = Field(
         default=[],
-        description="The high score posts in the current round, highly likely to be a rumor",
+        description="The posts in the current round, highly likely to be a rumor",
     )
 
     # Network structure
@@ -158,4 +248,15 @@ class SupervisorContext(BaseModel):
     )
     global_remove_follower_quota: int = Field(
         default=0, description="The global quota for removing followers"
+    )
+
+    # Current agent info for risk assessment
+    current_agent_degree: int = Field(
+        default=0, description="The degree of the current processing agent"
+    )
+    current_agent_offense_summary: str = Field(
+        default="", description="The offense summary of the current processing agent"
+    )
+    current_agent_intervention_count: int = Field(
+        default=0, description="The intervention count of the current processing agent"
     )

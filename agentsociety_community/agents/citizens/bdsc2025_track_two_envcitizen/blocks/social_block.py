@@ -4,6 +4,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Optional, Tuple
 
+from agentsociety.memory.const import RelationType, SocialRelation
 from agentsociety.agent import Agent, Block, BlockContext, BlockParams, FormatPrompt
 from agentsociety.environment import Environment
 from agentsociety.llm import LLM
@@ -97,7 +98,12 @@ class SocialBlock(Block):
             environment: The environment instance.
             memory: The memory instance.
         """
-        super().__init__(llm=llm, environment=environment, agent_memory=memory, block_params=block_params)
+        super().__init__(
+            llm=llm,
+            environment=environment,
+            agent_memory=memory,
+            block_params=block_params,
+        )
         self.max_visible_followers = max_visible_followers
         self.max_private_chats = max_private_chats
         self.chat_probability = chat_probability
@@ -160,8 +166,19 @@ class SocialBlock(Block):
                 or "(本轮未收到新消息)"
             )
             # followers & followings
-            followers = await self.memory.status.get("followers", [])
-            followings = await self.memory.status.get("followings", [])
+            current_social_network: list[SocialRelation] = await self.memory.status.get(
+                "social_network", []
+            )
+            followers = [
+                connection.target_id
+                for connection in current_social_network
+                if connection.kind == RelationType.FOLLOWER
+            ]
+            followings = [
+                connection.target_id
+                for connection in current_social_network
+                if connection.kind == RelationType.FOLLOWING
+            ]
             # Format intervention history
             intervention_details_list = []
             for hist_item in self.intervention_history:

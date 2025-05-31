@@ -7,10 +7,11 @@ from agentsociety.agent import (Agent, AgentToolbox, Block, CitizenAgentBase,
                                 FormatPrompt, StatusAttribute)
 from agentsociety.logger import get_logger
 from agentsociety.memory import Memory
+from agentsociety.memory.const import RelationType, SocialRelation
+from agentsociety.message import Message
 from agentsociety.survey import Survey
-from jsonc import JSONDecodeError
 
-from .blocks import CognitionBlock, SocialBlock
+from .blocks import SocialBlock
 from .sharing_params import (EnvCitizenBlockOutput, EnvCitizenConfig,
                              EnvCitizenContext)
 
@@ -244,18 +245,6 @@ class EnvCitizen(CitizenAgentBase):
         ),
         # Social
         StatusAttribute(
-            name="followers",
-            type=list,
-            default=[],
-            description="agent's followers list",
-        ),
-        StatusAttribute(
-            name="following",
-            type=list,
-            default=[],
-            description="agent's following list",
-        ),
-        StatusAttribute(
             name="friends_info",
             type=dict,
             default={},
@@ -330,12 +319,6 @@ class EnvCitizen(CitizenAgentBase):
             agent_params=agent_params,
             blocks=blocks,
         )
-
-        self.cognition_block = CognitionBlock(
-            llm=self.llm,
-            environment=self.environment,
-            agent_memory=self.memory,
-        )
         self.social_block = SocialBlock(
             agent=self,
             llm=self.llm,
@@ -387,14 +370,13 @@ class EnvCitizen(CitizenAgentBase):
                 f"Agent {self.id}: Finished main workflow - social interaction"
             )
 
-        # cognition
-        await self.cognition_block.forward(None)
         get_logger().debug(f"Agent {self.id}: Finished main workflow - cognition")
 
         return time.time() - start_time
 
-    async def process_agent_chat_response(self, payload: dict) -> str:
+    async def do_chat(self, message: Message) -> str:
         """Process incoming social/economic messages and generate responses."""
+        payload = message.payload
         if payload["type"] == "social":
             resp = f"Agent {self.id} received agent chat response: {payload}"
             try:
@@ -422,7 +404,6 @@ class EnvCitizen(CitizenAgentBase):
                 # add social memory
                 description = f"You received a social message: {content}"
                 await self.memory.stream.add_social(description=description)
-                await self.cognition_block.emotion_update(description)
             except Exception as e:
                 get_logger().warning(f"Error in process_agent_chat_response: {str(e)}")
                 return ""
@@ -431,7 +412,6 @@ class EnvCitizen(CitizenAgentBase):
             # add persuasion memory
             description = f"You received a persuasion message: {content}"
             await self.memory.stream.add_social(description=description)
-            await self.cognition_block.emotion_update(description)
             await self.social_block._add_intervention_to_history(
                 intervention_type="persuasion_received",
                 details={
@@ -440,9 +420,16 @@ class EnvCitizen(CitizenAgentBase):
             )
         elif payload["type"] == "remove-follower":
             to_remove_id = payload["to_remove_id"]
-            current_followers = await self.memory.status.get("followers")
-            current_followers = [f for f in current_followers if f != to_remove_id]
-            await self.memory.status.update("followers", current_followers)
+            current_social_network: list[SocialRelation] = await self.memory.status.get(
+                "social_network"
+            )
+            current_social_network = [
+                connection
+                for connection in current_social_network
+                if connection.target_id != to_remove_id
+                and connection.kind == RelationType.FOLLOWER
+            ]
+            await self.memory.status.update("social_network", current_social_network)
             await self.social_block._add_intervention_to_history(
                 intervention_type="remove_follower_by_platform",
                 details={
@@ -451,9 +438,16 @@ class EnvCitizen(CitizenAgentBase):
             )
         elif payload["type"] == "remove-following":
             to_remove_id = payload["to_remove_id"]
-            current_following = await self.memory.status.get("following")
-            current_following = [f for f in current_following if f != to_remove_id]
-            await self.memory.status.update("following", current_following)
+            current_social_network: list[SocialRelation] = await self.memory.status.get(
+                "social_network"
+            )
+            current_social_network = [
+                connection
+                for connection in current_social_network
+                if connection.target_id != to_remove_id
+                and connection.kind == RelationType.FOLLOWING
+            ]
+            await self.memory.status.update("social_network", current_social_network)
             await self.social_block._add_intervention_to_history(
                 intervention_type="remove_following_by_platform",
                 details={
@@ -474,7 +468,69 @@ class EnvCitizen(CitizenAgentBase):
             )
         return ""
 
-    async def generate_user_survey_response(self, survey: Survey) -> str:
+        # async def do_survey(self, survey: Survey) -> str:
+        """
+        Generate a response to a user survey based on the agent's memory and current state.
+
+        - **Args**:
+            - `survey` (`Survey`): The survey that needs to be answered.
+
+        - **Returns**:
+            - `str`: The generated response from the agent.
+
+        - **Description**:
+            - Prepares a prompt for the Language Model (LLM) based on the provided survey.
+            - Constructs a dialog including system prompts, relevant memory context, and the survey question itself.
+            - Uses the LLM client to generate a response asynchronously.
+            - If the LLM client is not available, it returns a default message indicating unavailability.
+            - This method can be overridden by subclasses to customize survey response generation.
+        """
+        survey_prompt = survey.to_prompt()
+        dialog = []
+
+        # Add system prompt
+        system_prompt = "Please answer the survey question in first person. Follow the format requirements strictly and provide clear and specific answers (In JSON format)."
+        dialog.append({"role": "system", "content": system_prompt})
+
+        # Add memory context
+        if self.memory:
+            message_summary = self.social_block.history_summary
+            preference = await self.memory.status.get(
+                "message_propagation_preference", ""
+            )
+            dialog.append(
+                {
+                    "role": "system",
+                    "content": f"你最终了解到的外部信息总结如下：\n{message_summary}\n \n{self.social_block.preference_appendix.get(preference, '')}\n",
+                }
+            )
+
+        # Add survey question
+        dialog.append({"role": "user", "content": survey_prompt})
+
+        for retry in range(10):
+            try:
+                # Use LLM to generate a response
+                # print(f"dialog: {dialog}")
+                _response = await self.llm.atext_request(
+                    dialog, response_format={"type": "json_object"}
+                )
+                json_str = extract_json(_response)
+                if json_str:
+                    json_dict = jsonc.loads(json_str)
+                    json_str = jsonc.dumps(json_dict, ensure_ascii=False)
+                    break
+            except:
+                pass
+        else:
+            import traceback
+
+            traceback.print_exc()
+            get_logger().error("Failed to generate survey response")
+            json_str = ""
+        return json_str
+
+    async def do_survey(self, survey: Survey) -> str:
         """
         Generate a response to a user survey based on the agent's memory and current state.
 
@@ -538,13 +594,14 @@ class EnvCitizen(CitizenAgentBase):
 
     async def react_to_intervention(self, intervention_message: str):
         """React to an intervention"""
-        # cognition
-        conclusion = await self.cognition_block.emotion_update(intervention_message)
-        await self.save_agent_thought(conclusion)
-        await self.memory.stream.add_cognition(description=conclusion)
+        pass
 
     async def reset_position(self):
         """Reset the position of the agent."""
         home = await self.status.get("home")
         home = home["aoi_position"]["aoi_id"]
         await self.environment.reset_person_position(person_id=self.id, aoi_id=home)
+
+    async def close(self):
+        """Close the agent."""
+        pass

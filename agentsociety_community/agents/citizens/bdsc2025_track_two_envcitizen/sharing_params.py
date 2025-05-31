@@ -12,7 +12,7 @@ from agentsociety.agent import (
 class EnvCitizenConfig(AgentParams):
     """Configuration for env citizen agent."""
     chat_probability: float = Field(
-        default=0.12, description="Probability of chatting with friends"
+        default=1.0, description="Probability of chatting with friends"
     )
     rumor_post_identifier: int = Field(
         default=5000, description="Rumor post identifier"

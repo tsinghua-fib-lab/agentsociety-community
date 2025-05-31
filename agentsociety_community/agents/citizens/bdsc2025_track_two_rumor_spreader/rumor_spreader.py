@@ -6,6 +6,7 @@ from typing import Any, Optional
 from agentsociety.agent import (Agent, AgentToolbox, Block, CitizenAgentBase,
                                 StatusAttribute)
 from agentsociety.memory import Memory
+from agentsociety.memory.const import RelationType, SocialRelation
 
 from .sharing_params import (RumorSpreaderBlockOutput, RumorSpreaderConfig,
                              RumorSpreaderContext)
@@ -209,18 +210,6 @@ class RumorSpreader(CitizenAgentBase):
         ),
         # Social
         StatusAttribute(
-            name="followers",
-            type=list,
-            default=[],
-            description="agent's followers list",
-        ),
-        StatusAttribute(
-            name="following",
-            type=list,
-            default=[],
-            description="agent's following list",
-        ),
-        StatusAttribute(
             name="friends_info",
             type=dict,
             default={},
@@ -313,7 +302,14 @@ class RumorSpreader(CitizenAgentBase):
         rumor_content = self.params.rumor_posts[
             self.step_count % len(self.params.rumor_posts)
         ]
-        all_agent_ids = await self.memory.status.get("followers")
+        current_social_network: list[SocialRelation] = await self.memory.status.get(
+            "social_network", []
+        )
+        all_agent_ids = [
+            connection.target_id
+            for connection in current_social_network
+            if connection.kind == RelationType.FOLLOWER
+        ]
         num_public_receivers = min(
             self.params.rumor_post_visible_cnt, len(all_agent_ids)
         )
@@ -352,3 +348,7 @@ class RumorSpreader(CitizenAgentBase):
         home = await self.status.get("home")
         home = home["aoi_position"]["aoi_id"]
         await self.environment.reset_person_position(person_id=self.id, aoi_id=home)
+
+    async def close(self):
+        """Close the agent."""
+        pass
