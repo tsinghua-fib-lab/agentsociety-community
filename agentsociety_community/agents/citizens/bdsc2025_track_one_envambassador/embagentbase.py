@@ -6,6 +6,7 @@ import os
 import jsonc
 from pydantic import Field
 from agentsociety.agent import CitizenAgentBase, AgentToolbox, Block, AgentParams, StatusAttribute
+from agentsociety.message import Message, MessageKind
 from agentsociety.memory import Memory
 from agentsociety.agent import register_get
 
@@ -102,30 +103,33 @@ class EnvAgentBase(CitizenAgentBase):
         """
         pass
     
-    async def process_agent_chat_response(self, payload: dict) -> str:
+    async def do_chat(self, message: Message) -> str:
         """
-        Process incoming messages and generate responses.
-        Do not change anything in this method.
+        Process incoming social/economic messages and generate responses.
         """
-        if payload["type"] == "social":
-            try:
-                sender_id = payload.get("from")
-                if not sender_id:
+        if message.kind == MessageKind.AGENT_CHAT:
+            payload = message.payload
+            if payload["type"] == "social":
+                try:
+                    sender_id = payload.get("from")
+                    if not sender_id:
+                        return ""
+                    content = payload.get("content", None)
+                    if not content:
+                        return ""
+                    chat_histories = await self.memory.status.get("chat_histories", {})
+                    if sender_id not in chat_histories:
+                        chat_histories[sender_id] = f"He/She: {content}"
+                    else:
+                        chat_histories[sender_id] += f"\nHe/She: {content}"
+                    await self.memory.status.update("chat_histories", chat_histories)
+                    response = await self.communication_response(sender_id, content)
+                    if response:
+                        await self.communication.sendMessage(sender_id, response)
+                    return response
+                except Exception as e:
                     return ""
-                content = payload.get("content", None)
-                if not content:
-                    return ""
-                chat_histories = await self.memory.status.get("chat_histories", {})
-                if sender_id not in chat_histories:
-                    chat_histories[sender_id] = f"He/She: {content}"
-                else:
-                    chat_histories[sender_id] += f"\nHe/She: {content}"
-                await self.memory.status.update("chat_histories", chat_histories)
-                response = await self.communication_response(sender_id, content)
-                if response:
-                    await self.communication.sendMessage(sender_id, response)
-                return response
-            except Exception as e:
+            else:
                 return ""
         else:
             return ""

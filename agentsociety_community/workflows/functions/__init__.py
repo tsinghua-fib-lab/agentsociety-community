@@ -57,13 +57,6 @@ def _import_insert_citizen_information_bdsc_2025_track_one() -> Type[FunctionTyp
     return insert_citizen_information
 
 
-def _import_gather_survey_results_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        gather_survey_results
-    
-    return gather_survey_results
-
-
 def _import_gather_carbon_emission_results_bdsc_2025_track_one() -> Type[FunctionType]:
     from .bdsc_2025_track_one.workflow import \
         gather_carbon_emission_results
@@ -112,8 +105,6 @@ def __getattr__(name: str) -> Type[FunctionType]:
         return _import_do_nothing()
     if name == "insert_citizen_information_bdsc_2025_track_one":
         return _import_insert_citizen_information_bdsc_2025_track_one()
-    if name == "gather_survey_results_bdsc_2025_track_one":
-        return _import_gather_survey_results_bdsc_2025_track_one()
     if name == "gather_carbon_emission_results_bdsc_2025_track_one":
         return _import_gather_carbon_emission_results_bdsc_2025_track_one()
     if name == "gather_promotion_results_bdsc_2025_track_one":
@@ -138,7 +129,6 @@ def __getattr__(name: str) -> Type[FunctionType]:
 __all__ = [
     "do_nothing",
     "insert_citizen_information_bdsc_2025_track_one",
-    "gather_survey_results_bdsc_2025_track_one",
     "gather_carbon_emission_results_bdsc_2025_track_one",
     "gather_promotion_results_bdsc_2025_track_one",
     "gather_communication_history_bdsc_2025_track_one",
@@ -161,7 +151,6 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[FunctionType]]]:
         "send_rumor_spread_survey_bdsc_2025_track_two": _import_send_rumor_spread_survey_bdsc_2025_track_two,
         "gather_survey_results_bdsc_2025_track_two": _import_gather_survey_results_bdsc_2025_track_two,
         "insert_citizen_information_bdsc_2025_track_one": _import_insert_citizen_information_bdsc_2025_track_one,
-        "gather_survey_results_bdsc_2025_track_one": _import_gather_survey_results_bdsc_2025_track_one,
         "gather_carbon_emission_results_bdsc_2025_track_one": _import_gather_carbon_emission_results_bdsc_2025_track_one,
         "gather_promotion_results_bdsc_2025_track_one": _import_gather_promotion_results_bdsc_2025_track_one,
         "gather_communication_history_bdsc_2025_track_one": _import_gather_communication_history_bdsc_2025_track_one,

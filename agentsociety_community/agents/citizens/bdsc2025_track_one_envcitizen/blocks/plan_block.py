@@ -252,9 +252,7 @@ class EnvPlanBlock(Block):
                 cognition = f"I choose to {result['selected_option']} because {result['evaluation']['reasoning']}"
                 return result, cognition
             except Exception as e:
-                get_logger().warning(
-                    f"Error parsing guidance selection response: {str(e)}"
-                )
+                pass
                 retry -= 1
         return None
 
@@ -315,10 +313,7 @@ class EnvPlanBlock(Block):
                         raise ValueError(f"Invalid step type: {step['type']}")
                 return result
             except Exception as e:
-                get_logger().warning(f"Error parsing detailed plan: {str(e)}")
-                get_logger().debug(
-                    f"Error parsing detailed plan: {str(e)} with response={response}"
-                )
+                pass
                 retry -= 1
         return None
 

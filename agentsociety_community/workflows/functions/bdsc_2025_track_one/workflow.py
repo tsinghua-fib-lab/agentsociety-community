@@ -53,21 +53,6 @@ async def insert_citizen_information(simulation: AgentSociety):
     await simulation.update([ambassador], "citizens", citizen_profiles)
 
 
-async def gather_survey_results(simulation: AgentSociety):
-    citizen_ids = await simulation.filter(types=(TrackOneEnvCitizen,))
-    survey_responses_dict = await simulation.gather(
-        "survey_result", citizen_ids, flatten=True, keep_id=True
-    )
-    survey_responses: list[Any] = []
-    for citizen_id, responses in survey_responses_dict.items():  # type: ignore
-        survey_responses.append(responses)
-    survey_scores, final_score = extract_survey_scores(survey_responses)
-    simulation.context["survey_result"] = {
-        "survey_scores": survey_scores,
-        "final_score": final_score
-    }
-
-
 async def gather_carbon_emission_results(simulation: AgentSociety):
     citizen_ids = await simulation.filter(types=(TrackOneEnvCitizen,))
     transportation_logs = await simulation.gather(
@@ -162,7 +147,15 @@ async def start_emission_log(simulation: AgentSociety):
 
 async def send_canbon_awareness_survey(simulation: AgentSociety):
     citizen_ids = await simulation.filter(types=(TrackOneEnvCitizen,))
-    await simulation.send_survey(create_low_carbon_awareness_survey(), citizen_ids)
+    survey_responses_dict = await simulation.send_survey(create_low_carbon_awareness_survey(), citizen_ids)
+    survey_responses: list[Any] = []
+    for citizen_id, responses in survey_responses_dict.items():  # type: ignore
+        survey_responses.append(responses)
+    survey_scores, final_score = extract_survey_scores(survey_responses)
+    simulation.context["survey_result"] = {
+        "survey_scores": survey_scores,
+        "final_score": final_score
+    }
 
 
 TRACK_ONE_EXPERIMENT=ExpConfig(
@@ -209,11 +202,6 @@ TRACK_ONE_EXPERIMENT=ExpConfig(
             type=WorkflowType.FUNCTION,
             func=send_canbon_awareness_survey,
             description="Send the carbon awareness survey.",
-        ),
-        WorkflowStepConfig(
-            type=WorkflowType.FUNCTION,
-            func=gather_survey_results,
-            description="Gather the survey results.",
         ),
         WorkflowStepConfig(
             type=WorkflowType.FUNCTION,

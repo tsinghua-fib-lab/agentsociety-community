@@ -1,5 +1,6 @@
 import jsonc
 from agentsociety.agent import AgentToolbox, Block, FormatPrompt
+from agentsociety.message import Message, MessageKind
 from agentsociety.memory import Memory
 from agentsociety.logger import get_logger
 from typing import Any, Optional
@@ -394,44 +395,48 @@ class BaselineEnvAmbassador(EnvAgentBase):
             else:
                 get_logger().info(f"Ambassador {self.id} action failed. Wrong action name: {function_name}")
 
-    async def process_agent_chat_response(self, payload: dict) -> str:
+    async def do_chat(self, message: Message) -> str:
         """Process incoming messages and generate responses."""
-        if payload["type"] == "social":
-            resp = f"Ambassador {self.id} received agent chat response: {payload}"
-            try:
-                # Extract basic info
-                sender_id = payload.get("from")
-                if not sender_id:
+        if message.kind == MessageKind.AGENT_CHAT:
+            payload = message.payload
+            if payload["type"] == "social":
+                resp = f"Ambassador {self.id} received agent chat response: {payload}"
+                try:
+                    # Extract basic info
+                    sender_id = payload.get("from")
+                    if not sender_id:
+                        return ""
+
+                    content = payload.get("content", None)
+
+                    if not content:
+                        return ""
+
+                    # Get chat histories and ensure proper format
+                    chat_histories = await self.memory.status.get("chat_histories") or {}
+                    if not isinstance(chat_histories, dict):
+                        chat_histories = {}
+
+                    # Update chat history with received message
+                    if sender_id not in chat_histories:
+                        chat_histories[sender_id] = ""
+                    if chat_histories[sender_id]:
+                        chat_histories[sender_id] += ", "
+                    chat_histories[sender_id] += f"he/she: {content}"
+                    await self.memory.status.update("chat_histories", chat_histories)
+
+                    await self.communication_response_prompt.format(context=self.context)
+
+                    response = await self.llm.atext_request(
+                        self.communication_response_prompt.to_dialog()
+                    )
+
+                    if response:
+                        await self.communication.sendMessage(sender_id, response)
+                    return response
+                except Exception as e:
                     return ""
-
-                content = payload.get("content", None)
-
-                if not content:
-                    return ""
-
-                # Get chat histories and ensure proper format
-                chat_histories = await self.memory.status.get("chat_histories") or {}
-                if not isinstance(chat_histories, dict):
-                    chat_histories = {}
-
-                # Update chat history with received message
-                if sender_id not in chat_histories:
-                    chat_histories[sender_id] = ""
-                if chat_histories[sender_id]:
-                    chat_histories[sender_id] += ", "
-                chat_histories[sender_id] += f"he/she: {content}"
-                await self.memory.status.update("chat_histories", chat_histories)
-
-                await self.communication_response_prompt.format(context=self.context)
-
-                response = await self.llm.atext_request(
-                    self.communication_response_prompt.to_dialog()
-                )
-
-                if response:
-                    await self.communication.sendMessage(sender_id, response)
-                return response
-            except Exception as e:
+            else:
                 return ""
         else:
             return ""

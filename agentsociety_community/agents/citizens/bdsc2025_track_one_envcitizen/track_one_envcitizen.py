@@ -12,6 +12,7 @@ from agentsociety.agent import AgentToolbox, Block, CitizenAgentBase, AgentParam
 from agentsociety.logger import get_logger
 from agentsociety.memory import Memory
 from agentsociety.survey import Survey
+from agentsociety.message import Message, MessageKind
 from .blocks import (EnvCognitionBlock, EnvNeedsBlock, EnvPlanBlock, EnvMobilityBlock, EnvEconomyBlock, EnvSocialBlock, EnvOtherBlock)
 from .blocks.needs_block import INITIAL_NEEDS_PROMPT
 from .blocks.plan_block import DETAILED_PLAN_PROMPT
@@ -216,7 +217,7 @@ class TrackOneEnvCitizen(CitizenAgentBase):
             else:
                 self.info_checked[aoi_id] -= 1
 
-    async def generate_user_survey_response(self, survey: Survey) -> str:
+    async def do_survey(self, survey: Survey) -> str:
         survey_prompt = survey.to_prompt()
         dialog = []
 
@@ -463,46 +464,48 @@ Please update your attitude towards the environmental protection based on the me
         # The previous step has not been completed
         return False
 
-    async def process_agent_chat_response(self, payload: dict) -> str:
+    async def do_chat(self, message: Message) -> str:
         """Process incoming social/economic messages and generate responses."""
-        if payload["type"] == "social":
-            try:
-                # Extract basic info
-                sender_id = payload.get("from")
-                if not sender_id:
-                    return ""
+        if message.kind == MessageKind.AGENT_CHAT:
+            payload = message.payload
+            if payload["type"] == "social":
+                try:
+                    # Extract basic info
+                    sender_id = payload.get("from")
+                    if not sender_id:
+                        return ""
 
-                content = payload.get("content", None)
+                    content = payload.get("content", None)
 
-                if not content:
-                    return ""
+                    if not content:
+                        return ""
 
-                # add social memory
-                description = f"You received a message: {content}"
-                await self.memory.stream.add_social(description=description)
-                if self.params.enable_cognition:
-                    # update emotion
-                    await self.cognition_block.emotion_update(description)
+                    # add social memory
+                    description = f"You received a message: {content}"
+                    await self.memory.stream.add_social(description=description)
+                    if self.params.enable_cognition:
+                        # update emotion
+                        await self.cognition_block.emotion_update(description)
 
-                # Get chat histories and ensure proper format
-                if "ANNOUNCEMENT" not in content:
-                    chat_histories = await self.memory.status.get("chat_histories") or {}
-                    if not isinstance(chat_histories, dict):
-                        chat_histories = {}
+                    # Get chat histories and ensure proper format
+                    if "ANNOUNCEMENT" not in content:
+                        chat_histories = await self.memory.status.get("chat_histories") or {}
+                        if not isinstance(chat_histories, dict):
+                            chat_histories = {}
 
-                    # Update chat history with received message
-                    if sender_id not in chat_histories:
-                        chat_histories[sender_id] = ""
-                    if chat_histories[sender_id]:
-                        chat_histories[sender_id] += "，"
-                    chat_histories[sender_id] += f"them: {content}"
+                        # Update chat history with received message
+                        if sender_id not in chat_histories:
+                            chat_histories[sender_id] = ""
+                        if chat_histories[sender_id]:
+                            chat_histories[sender_id] += "，"
+                        chat_histories[sender_id] += f"them: {content}"
 
-                    # Get relationship score
-                    relationships = await self.memory.status.get("relationships") or {}
-                    relationship_score = relationships.get(sender_id, 50)
+                        # Get relationship score
+                        relationships = await self.memory.status.get("relationships") or {}
+                        relationship_score = relationships.get(sender_id, 50)
 
-                    # Decision prompt
-                    should_respond_prompt = f"""Based on:
+                        # Decision prompt
+                        should_respond_prompt = f"""Based on:
 - Received message: "{content}"
 - Our relationship score: {relationship_score}/100
 - My background story: {await self.memory.status.get("background_story")}
@@ -517,21 +520,21 @@ Should I respond to this message? Consider:
 
 Answer only YES or NO, in JSON format, e.g. {{"should_respond": "YES"}}"""
 
-                    should_respond = await self.llm.atext_request(
-                        dialog=[
-                            {
-                                "role": "system",
-                                "content": "You are helping decide whether to respond to a message.",
-                            },
-                            {"role": "user", "content": should_respond_prompt},
-                        ],
-                        response_format={"type": "json_object"},
-                    )
-                    should_respond = jsonc.loads(should_respond)["should_respond"]
-                    if should_respond == "NO":
-                        return ""
+                        should_respond = await self.llm.atext_request(
+                            dialog=[
+                                {
+                                    "role": "system",
+                                    "content": "You are helping decide whether to respond to a message.",
+                                },
+                                {"role": "user", "content": should_respond_prompt},
+                            ],
+                            response_format={"type": "json_object"},
+                        )
+                        should_respond = jsonc.loads(should_respond)["should_respond"]
+                        if should_respond == "NO":
+                            return ""
 
-                    response_prompt = f"""Based on:
+                        response_prompt = f"""Based on:
 - Received message: "{content}"
 - Our relationship score: {relationship_score}/100
 - Your background story: {await self.memory.status.get("background_story") or ""}
@@ -548,39 +551,43 @@ Generate an appropriate response that:
 
 Response should be ONLY the message text, no explanations."""
 
-                    response = await self.llm.atext_request(
-                        [
-                            {
-                                "role": "system",
-                                "content": "You are helping generate a chat response.",
-                            },
-                            {"role": "user", "content": response_prompt},
-                        ]
-                    )
+                        response = await self.llm.atext_request(
+                            [
+                                {
+                                    "role": "system",
+                                    "content": "You are helping generate a chat response.",
+                                },
+                                {"role": "user", "content": response_prompt},
+                            ]
+                        )
 
-                    if response:
-                        # Update chat history with response
-                        chat_histories[sender_id] += f", me: {response}"
-                        await self.memory.status.update("chat_histories", chat_histories)
+                        if response:
+                            # Update chat history with response
+                            chat_histories[sender_id] += f", me: {response}"
+                            await self.memory.status.update("chat_histories", chat_histories)
 
-                        await self.send_message_to_agent(sender_id, response)
-                    return response
+                            await self.send_message_to_agent(sender_id, response)
+                        return response
 
-            except Exception as e:
-                get_logger().warning(f"Error in process_agent_chat_response: {str(e)}")
-                return ""
-        else:
-            content = payload["content"]
-            key, value = content.split("@")
-            if "." in value:
-                value = float(value)
+                except Exception as e:
+                    get_logger().warning(f"Error in process_agent_chat_response: {str(e)}")
+                    return ""
             else:
-                value = int(value)
-            description = f"You received a economic message: Your {key} has changed from {await self.memory.status.get(key)} to {value}"
-            await self.memory.status.update(key, value)
-            await self.memory.stream.add_economy(description=description)
-            if self.params.enable_cognition:
-                await self.cognition_block.emotion_update(description)
+                content = payload["content"]
+                key, value = content.split("@")
+                if "." in value:
+                    value = float(value)
+                else:
+                    value = int(value)
+                description = f"You received a economic message: Your {key} has changed from {await self.memory.status.get(key)} to {value}"
+                await self.memory.status.update(key, value)
+                await self.memory.stream.add_economy(description=description)
+                if self.params.enable_cognition:
+                    await self.cognition_block.emotion_update(description)
+                return ""
+        elif message.kind == MessageKind.USER_CHAT:
+            return "AUTO RESPONSE: HELLO"
+        else:
             return ""
 
     async def react_to_intervention(self, intervention_message: str):

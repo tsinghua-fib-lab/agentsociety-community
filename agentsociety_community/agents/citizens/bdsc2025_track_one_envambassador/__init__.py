@@ -1,5 +1,5 @@
-from .embagentbase import EnvAgentBase
+from .baseline import BaselineEnvAmbassador
 
 __all__ = [
-    "EnvAgentBase",
+    "BaselineEnvAmbassador",
 ]
