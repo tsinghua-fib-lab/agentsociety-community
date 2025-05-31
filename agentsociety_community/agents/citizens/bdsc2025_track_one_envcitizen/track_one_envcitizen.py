@@ -468,13 +468,13 @@ Please update your attitude towards the environmental protection based on the me
         """Process incoming social/economic messages and generate responses."""
         if message.kind == MessageKind.AGENT_CHAT:
             payload = message.payload
+            sender_id = message.from_id
+            if not sender_id:
+                return ""
+            
             if payload["type"] == "social":
                 try:
                     # Extract basic info
-                    sender_id = payload.get("from")
-                    if not sender_id:
-                        return ""
-
                     content = payload.get("content", None)
 
                     if not content:
