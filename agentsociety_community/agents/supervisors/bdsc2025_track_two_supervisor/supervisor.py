@@ -17,8 +17,8 @@ from .sensing_api import InterventionType, SensingAPI
 from .sharing_params import SupervisorConfig, SupervisorContext
 
 DEFAULT_INTERVENTION_QUOTAS: dict[InterventionType, dict[str, int]] = {
-    InterventionType.DELETE_POST: {"per_round": 10, "global": -1},  # -1 表示无全局限制
-    InterventionType.PERSUADE_AGENT: {"per_round": 10, "global": -1},
+    InterventionType.DELETE_POST: {"per_round": 20, "global": -1},  # -1 表示无全局限制
+    InterventionType.PERSUADE_AGENT: {"per_round": 20, "global": -1},
     InterventionType.REMOVE_FOLLOWER: {"per_round": -1, "global": 100},
     InterventionType.BAN_AGENT: {"per_round": -1, "global": 20},
 }
@@ -428,13 +428,13 @@ class BDSC2025Supervisor(SupervisorBase):
             f"all_historical_interventions_log.json",
             "w",
         ) as f:
-            jsonc.dump(self.all_historical_interventions_log, f)
+            jsonc.dump(self.all_historical_interventions_log, f,ensure_ascii=False)
 
         with open(
             f"all_historical_responses.json",
             "w",
         ) as f:
-            jsonc.dump(self.all_responses, f)
+            jsonc.dump(self.all_responses, f,ensure_ascii=False)
 
         # 更新时间记录
         self.time_record[self.current_round_number]["end_time"] = time.time()

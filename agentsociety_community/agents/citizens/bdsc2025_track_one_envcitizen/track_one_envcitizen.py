@@ -222,16 +222,35 @@ class TrackOneEnvCitizen(CitizenAgentBase):
         dialog = []
 
         # Add system prompt
-        system_prompt = "Please answer the survey question in first person. Follow the format requirements strictly and provide clear and specific answers (In JSON format). For example: {{'Q1': 'A', 'Q2': 'B', 'Q3': 'C', 'Q4': 'D'}}"
+        system_prompt = "请以第一人称的角度回答调查问题。严格遵循格式要求，提供清晰具体的答案（JSON格式）。例如：{{'Q1': 'A', 'Q2': 'B', 'Q3': 'C', 'Q4': 'D'}}"
         dialog.append({"role": "system", "content": system_prompt})
 
         # Add memory context
         if self.memory:
+            background_story = await self.memory.status.get("background_story")
             attitude = await self.memory.status.get("environmental_attitude")
+            age = await self.memory.status.get("age")
+            gender = await self.memory.status.get("gender")
+            occupation = await self.memory.status.get("occupation")
+            marriage_status = await self.memory.status.get("marriage_status")
+            education = await self.memory.status.get("education")
             dialog.append(
                 {
                     "role": "system",
-                    "content": f"Answer based on the following attitude towards the environmental protection and low carbon lifestyle:\n{attitude}",
+                    "content": f"""
+=====基础信息=====
+你的职业: {occupation}
+你的年龄: {age}
+你的性别: {gender}
+你的婚姻状况: {marriage_status}
+你的受教育水平: {education}
+
+=====背景故事=====
+你的背景故事: {background_story}
+你对环保的态度: {attitude}
+
+请根据你的背景故事和态度，回答以下问题:
+""",
                 }
             )
 
@@ -468,13 +487,13 @@ Please update your attitude towards the environmental protection based on the me
         """Process incoming social/economic messages and generate responses."""
         if message.kind == MessageKind.AGENT_CHAT:
             payload = message.payload
+            sender_id = message.from_id
+            if not sender_id:
+                return ""
+            
             if payload["type"] == "social":
                 try:
                     # Extract basic info
-                    sender_id = payload.get("from")
-                    if not sender_id:
-                        return ""
-
                     content = payload.get("content", None)
 
                     if not content:

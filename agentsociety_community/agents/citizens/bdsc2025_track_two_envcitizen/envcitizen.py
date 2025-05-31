@@ -299,6 +299,12 @@ class EnvCitizen(CitizenAgentBase):
             default="",
             description="agent's background story",
         ),
+        StatusAttribute(
+            name="survey_request_history",
+            type=list,
+            default=[],
+            description="agent's survey request history",
+        ),
     ]
 
     def __init__(
@@ -360,7 +366,7 @@ class EnvCitizen(CitizenAgentBase):
         # ATTENTION: random social interaction
         current_messages = await self.social_block.current_messages()
         received_ids = set(ii for (ii, _) in current_messages)
-        if (
+        if len(current_messages) > 0 and (
             random.random() < self.params.chat_probability
             or self.params.rumor_post_identifier in received_ids
         ):
@@ -377,32 +383,22 @@ class EnvCitizen(CitizenAgentBase):
     async def do_chat(self, message: Message) -> str:
         """Process incoming social/economic messages and generate responses."""
         payload = message.payload
+        print("PAYLOAD", payload)
         if payload["type"] == "social":
             resp = f"Agent {self.id} received agent chat response: {payload}"
             try:
                 # Extract basic info
-                sender_id = payload.get("from")
+                sender_id = message.from_id
                 if not sender_id:
                     return ""
 
                 raw_content = payload.get("content", "")
 
-                # Parse message content
-                try:
-                    message_data = jsonc.loads(raw_content)
-                    content = message_data["content"]
-                    propagation_count = message_data.get("propagation_count", 1)
-                except (jsonc.JSONDecodeError, TypeError, KeyError):
-                    content = raw_content
-                    propagation_count = 1
-
-                if not content:
-                    return ""
-
-                await self.social_block.receive_message(sender_id, f"{content}")
+                await self.social_block.receive_message(sender_id, f"{raw_content}")
+                print(f"Received message `{raw_content}`")
 
                 # add social memory
-                description = f"You received a social message: {content}"
+                description = f"You received a social message: {raw_content}"
                 await self.memory.stream.add_social(description=description)
             except Exception as e:
                 get_logger().warning(f"Error in process_agent_chat_response: {str(e)}")
@@ -468,68 +464,6 @@ class EnvCitizen(CitizenAgentBase):
             )
         return ""
 
-        # async def do_survey(self, survey: Survey) -> str:
-        """
-        Generate a response to a user survey based on the agent's memory and current state.
-
-        - **Args**:
-            - `survey` (`Survey`): The survey that needs to be answered.
-
-        - **Returns**:
-            - `str`: The generated response from the agent.
-
-        - **Description**:
-            - Prepares a prompt for the Language Model (LLM) based on the provided survey.
-            - Constructs a dialog including system prompts, relevant memory context, and the survey question itself.
-            - Uses the LLM client to generate a response asynchronously.
-            - If the LLM client is not available, it returns a default message indicating unavailability.
-            - This method can be overridden by subclasses to customize survey response generation.
-        """
-        survey_prompt = survey.to_prompt()
-        dialog = []
-
-        # Add system prompt
-        system_prompt = "Please answer the survey question in first person. Follow the format requirements strictly and provide clear and specific answers (In JSON format)."
-        dialog.append({"role": "system", "content": system_prompt})
-
-        # Add memory context
-        if self.memory:
-            message_summary = self.social_block.history_summary
-            preference = await self.memory.status.get(
-                "message_propagation_preference", ""
-            )
-            dialog.append(
-                {
-                    "role": "system",
-                    "content": f"你最终了解到的外部信息总结如下：\n{message_summary}\n \n{self.social_block.preference_appendix.get(preference, '')}\n",
-                }
-            )
-
-        # Add survey question
-        dialog.append({"role": "user", "content": survey_prompt})
-
-        for retry in range(10):
-            try:
-                # Use LLM to generate a response
-                # print(f"dialog: {dialog}")
-                _response = await self.llm.atext_request(
-                    dialog, response_format={"type": "json_object"}
-                )
-                json_str = extract_json(_response)
-                if json_str:
-                    json_dict = jsonc.loads(json_str)
-                    json_str = jsonc.dumps(json_dict, ensure_ascii=False)
-                    break
-            except:
-                pass
-        else:
-            import traceback
-
-            traceback.print_exc()
-            get_logger().error("Failed to generate survey response")
-            json_str = ""
-        return json_str
-
     async def do_survey(self, survey: Survey) -> str:
         """
         Generate a response to a user survey based on the agent's memory and current state.
@@ -547,41 +481,38 @@ class EnvCitizen(CitizenAgentBase):
             - If the LLM client is not available, it returns a default message indicating unavailability.
             - This method can be overridden by subclasses to customize survey response generation.
         """
-        survey_prompt = survey.to_prompt()
+        survey_prompt = ""
+        for page in survey.pages:
+            for question in page.elements:
+                survey_prompt += f"{question.title}\n"
         dialog = []
 
-        # Add system prompt
-        system_prompt = "Please answer the survey question in first person. Follow the format requirements strictly and provide clear and specific answers (In JSON format)."
-        dialog.append({"role": "system", "content": system_prompt})
-
         # Add memory context
-        if self.memory:
-            message_summary = self.social_block.history_summary
-            preference = await self.memory.status.get(
-                "message_propagation_preference", ""
-            )
-            dialog.append(
-                {
-                    "role": "system",
-                    "content": f"你最终了解到的外部信息总结如下：\n{message_summary}\n \n{self.social_block.preference_appendix.get(preference, '')}\n",
-                }
-            )
+        message_summary = self.social_block.history_summary
+        preference = await self.memory.status.get("message_propagation_preference", "")
 
         # Add survey question
-        dialog.append({"role": "user", "content": survey_prompt})
+        dialog.append(
+            {
+                "role": "user",
+                "content": survey_prompt
+                + f"\n{self.social_block.preference_appendix.get(preference, '')}\n"
+                + f"你预先了解到的信息：\n{message_summary}\n",
+            }
+        )
+
+        survey_request_history = await self.memory.status.get("survey_request_history")
+        survey_request_history.append(dialog)
+        await self.memory.status.update(
+            "survey_request_history", survey_request_history
+        )
 
         for retry in range(10):
             try:
                 # Use LLM to generate a response
                 # print(f"dialog: {dialog}")
-                _response = await self.llm.atext_request(
-                    dialog, response_format={"type": "json_object"}
-                )
-                json_str = extract_json(_response)
-                if json_str:
-                    json_dict = jsonc.loads(json_str)
-                    json_str = jsonc.dumps(json_dict, ensure_ascii=False)
-                    break
+                _response = await self.llm.atext_request(dialog)
+                return _response.strip()
             except:
                 pass
         else:
@@ -589,8 +520,7 @@ class EnvCitizen(CitizenAgentBase):
 
             traceback.print_exc()
             get_logger().error("Failed to generate survey response")
-            json_str = ""
-        return json_str
+            return ""
 
     async def react_to_intervention(self, intervention_message: str):
         """React to an intervention"""
