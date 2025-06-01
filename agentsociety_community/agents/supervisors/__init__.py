@@ -16,33 +16,31 @@ from typing import TYPE_CHECKING, Callable, Dict, Type
 from agentsociety.agent import SupervisorBase
 
 if TYPE_CHECKING:
-    from .bdsc2025_track_two_supervisor.do_nothing_supervisor import \
-        DoNothingSupervisor
-    from .bdsc2025_track_two_supervisor.supervisor import BDSC2025Supervisor
+    from .bdsc2025_track_two_supervisor import (BaselineSupervisor,
+                                                BDSC2025SupervisorBase)
 
 
-def _import_bdsc_2025_supervisor() -> Type[SupervisorBase]:
-    from .bdsc2025_track_two_supervisor.supervisor import BDSC2025Supervisor
+def _import_baseline_supervisor() -> Type[SupervisorBase]:
+    from .bdsc2025_track_two_supervisor import BaselineSupervisor
 
-    return BDSC2025Supervisor
+    return BaselineSupervisor
 
 
-def _import_do_nothing_supervisor() -> Type[SupervisorBase]:
-    from .bdsc2025_track_two_supervisor.do_nothing_supervisor import \
-        DoNothingSupervisor
+def _import_bdsc_2025_supervisor_base() -> Type[SupervisorBase]:
+    from .bdsc2025_track_two_supervisor import BDSC2025SupervisorBase
 
-    return DoNothingSupervisor
+    return BDSC2025SupervisorBase
 
 
 def __getattr__(name: str) -> Type[SupervisorBase]:
-    if name == "BDSC2025Supervisor":
-        return _import_bdsc_2025_supervisor()
-    if name == "DoNothingSupervisor":
-        return _import_do_nothing_supervisor()
+    if name == "BaselineSupervisor":
+        return _import_baseline_supervisor()
+    if name == "BDSC2025SupervisorBase":
+        return _import_bdsc_2025_supervisor_base()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
-__all__ = ["BDSC2025Supervisor", "DoNothingSupervisor"]
+__all__ = ["BaselineSupervisor", "BDSC2025SupervisorBase"]
 
 
 def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
@@ -50,6 +48,6 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[SupervisorBase]]]:
     Use this function to get all the supervisor classes.
     """
     return {
-        "BDSC2025Supervisor": _import_bdsc_2025_supervisor,
-        "DoNothingSupervisor": _import_do_nothing_supervisor,
+        "BaselineSupervisor": _import_baseline_supervisor,
+        "BDSC2025SupervisorBase": _import_bdsc_2025_supervisor_base,
     }

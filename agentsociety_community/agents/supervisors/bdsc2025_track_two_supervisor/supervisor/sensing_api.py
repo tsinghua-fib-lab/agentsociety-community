@@ -4,8 +4,7 @@ import re  # 用于关键词搜索
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
-if TYPE_CHECKING:
-    from supervisor import SupervisorBase
+from agentsociety.agent import SupervisorBase
 
 
 class InterventionType(str, Enum):
@@ -491,4 +490,8 @@ class SensingAPI:
         """获取当前比赛设定的核心谣言主题的文字描述（问卷用）。"""
         return self.supervisor.rumor_topic_description  # type: ignore
 
-    # ... (其他方法保持不变) ...
+    def get_followers(self, agent_id: int) -> list[int]:
+        return self.supervisor.network.followers(agent_id)  # type: ignore
+
+    def get_following(self, agent_id: int) -> list[int]:
+        return self.supervisor.network.following(agent_id)  # type: ignore

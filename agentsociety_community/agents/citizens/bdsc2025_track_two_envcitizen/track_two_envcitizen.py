@@ -44,7 +44,7 @@ def extract_json(output_str):
         return None
 
 
-class EnvCitizen(CitizenAgentBase):
+class TrackTwoEnvCitizen(CitizenAgentBase):
     """Agent implementation with configurable cognitive/behavioral modules and social interaction capabilities."""
 
     ParamsType = EnvCitizenConfig

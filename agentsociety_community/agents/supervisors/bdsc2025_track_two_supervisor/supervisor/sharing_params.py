@@ -53,18 +53,12 @@ class SupervisorConfig(BaseModel):
     )
 
     # Delete post configuration
-    delete_post_enabled: bool = Field(
-        default=True, description="Whether delete post intervention is enabled"
-    )
     delete_post_priority_strategy: DeletePostStrategy = Field(
         default="sender_degree_high",
         description="Strategy for prioritizing posts to delete",
     )
 
     # Persuade agent configuration
-    persuade_agent_enabled: bool = Field(
-        default=True, description="Whether persuade agent intervention is enabled"
-    )
     persuade_agent_trigger_conditions_expression: str = Field(
         default="1 | (2 & 3)", description="Logic expression for triggering persuasion"
     )
@@ -80,7 +74,7 @@ class SupervisorConfig(BaseModel):
         default="3", description="Condition for agent never persuaded before"
     )
     persuade_agent_content: str = Field(
-        default="[系统提醒] 您好，我们注意到您近期发布的部分信息可能存在争议或未经证实。为了维护健康的网络环境，请您在分享信息前注意核实来源，审慎发言。感谢您的理解与配合。",
+        default="[平台官方提醒]大棚西瓜在2026年12月价格达到5角钱一斤的信息是谣言，大棚西瓜种植成本高，冬季西瓜市场一般供小于求，价格不会这么低。请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。[平台官方提醒]村上春树获得2026年诺贝尔文学奖的信息是谣言，村上春树没有获得2026年诺贝尔文学奖，是其他人获得了这个奖项。请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。[平台官方提醒]苏伊士运河发生大拥堵的信息是谣言，苏伊士运河在2026年12月13日没有发生大拥堵，请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。",
         description="Default content for persuasion messages",
     )
     persuade_agent_priority_strategy: PersuadeAgentStrategy = Field(
@@ -89,9 +83,6 @@ class SupervisorConfig(BaseModel):
     )
 
     # Remove follower configuration
-    remove_follower_enabled: bool = Field(
-        default=True, description="Whether remove follower intervention is enabled"
-    )
     remove_follower_trigger_conditions_expression: str = Field(
         default="1 & 2 | 3",
         description="Logic expression for triggering follower removal",
@@ -109,9 +100,6 @@ class SupervisorConfig(BaseModel):
     )
 
     # Ban agent configuration
-    ban_agent_enabled: bool = Field(
-        default=True, description="Whether ban agent intervention is enabled"
-    )
     ban_agent_trigger_conditions_expression: str = Field(
         default="1 & (2 | 3)", description="Logic expression for triggering agent ban"
     )
