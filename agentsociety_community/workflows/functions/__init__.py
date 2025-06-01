@@ -17,9 +17,8 @@ FunctionType = Callable[[AgentSociety], Awaitable[None]]
 
 if TYPE_CHECKING:
     from .bdsc_2025_track_two.workflows import (
-        gather_survey_results_bdsc_2025_track_two,
         init_simulation_context_bdsc_2025_track_two,
-        send_rumor_spread_survey_bdsc_2025_track_two)
+        send_and_gather_survey_results_bdsc_2025_track_two)
     from .donothing import do_nothing
 
 
@@ -36,68 +35,53 @@ def _import_init_simulation_context_bdsc_2025_track_two() -> Type[FunctionType]:
     return init_simulation_context_bdsc_2025_track_two
 
 
-def _import_send_rumor_spread_survey_bdsc_2025_track_two() -> Type[FunctionType]:
+def _import_send_and_gather_survey_results_bdsc_2025_track_two() -> Type[FunctionType]:
     from .bdsc_2025_track_two.workflows import \
-        send_rumor_spread_survey_bdsc_2025_track_two
+        send_and_gather_survey_results_bdsc_2025_track_two
 
-    return send_rumor_spread_survey_bdsc_2025_track_two
-
-
-def _import_gather_survey_results_bdsc_2025_track_two() -> Type[FunctionType]:
-    from .bdsc_2025_track_two.workflows import \
-        gather_survey_results_bdsc_2025_track_two
-
-    return gather_survey_results_bdsc_2025_track_two
+    return send_and_gather_survey_results_bdsc_2025_track_two
 
 
 def _import_insert_citizen_information_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        insert_citizen_information
-    
+    from .bdsc_2025_track_one.workflow import insert_citizen_information
+
     return insert_citizen_information
 
 
 def _import_gather_carbon_emission_results_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        gather_carbon_emission_results
-    
+    from .bdsc_2025_track_one.workflow import gather_carbon_emission_results
+
     return gather_carbon_emission_results
 
 
 def _import_gather_promotion_results_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        gather_promotion_results
-    
+    from .bdsc_2025_track_one.workflow import gather_promotion_results
+
     return gather_promotion_results
 
 
 def _import_gather_communication_history_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        gather_communication_history
-    
+    from .bdsc_2025_track_one.workflow import gather_communication_history
+
     return gather_communication_history
 
 
 def _import_delete_ambassador_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        delete_ambassador
-    
+    from .bdsc_2025_track_one.workflow import delete_ambassador
+
     return delete_ambassador
 
 
 def _import_start_emission_log_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        start_emission_log
-    
+    from .bdsc_2025_track_one.workflow import start_emission_log
+
     return start_emission_log
 
 
 def _import_send_carbon_awareness_survey_bdsc_2025_track_one() -> Type[FunctionType]:
-    from .bdsc_2025_track_one.workflow import \
-        send_canbon_awareness_survey
-    
-    return send_canbon_awareness_survey
+    from .bdsc_2025_track_one.workflow import send_canbon_awareness_survey
 
+    return send_canbon_awareness_survey
 
 
 def __getattr__(name: str) -> Type[FunctionType]:
@@ -119,10 +103,8 @@ def __getattr__(name: str) -> Type[FunctionType]:
         return _import_send_carbon_awareness_survey_bdsc_2025_track_one()
     if name == "init_simulation_context_bdsc_2025_track_two":
         return _import_init_simulation_context_bdsc_2025_track_two()
-    if name == "send_rumor_spread_survey_bdsc_2025_track_two":
-        return _import_send_rumor_spread_survey_bdsc_2025_track_two()
-    if name == "gather_survey_results_bdsc_2025_track_two":
-        return _import_gather_survey_results_bdsc_2025_track_two()
+    if name == "send_and_gather_survey_results_bdsc_2025_track_two":
+        return _import_send_and_gather_survey_results_bdsc_2025_track_two()
     raise AttributeError(f"module {__name__} has no attribute {name}")
 
 
@@ -136,8 +118,7 @@ __all__ = [
     "start_emission_log_bdsc_2025_track_one",
     "send_canbon_awareness_survey_bdsc_2025_track_one",
     "init_simulation_context_bdsc_2025_track_two",
-    "send_rumor_spread_survey_bdsc_2025_track_two",
-    "gather_survey_results_bdsc_2025_track_two",
+    "send_and_gather_survey_results_bdsc_2025_track_two",
 ]
 
 
@@ -148,8 +129,7 @@ def get_type_to_cls_dict() -> Dict[str, Callable[[], Type[FunctionType]]]:
     return {
         "do_nothing": _import_do_nothing,
         "init_simulation_context_bdsc_2025_track_two": _import_init_simulation_context_bdsc_2025_track_two,
-        "send_rumor_spread_survey_bdsc_2025_track_two": _import_send_rumor_spread_survey_bdsc_2025_track_two,
-        "gather_survey_results_bdsc_2025_track_two": _import_gather_survey_results_bdsc_2025_track_two,
+        "send_and_gather_survey_results_bdsc_2025_track_two": _import_send_and_gather_survey_results_bdsc_2025_track_two,
         "insert_citizen_information_bdsc_2025_track_one": _import_insert_citizen_information_bdsc_2025_track_one,
         "gather_carbon_emission_results_bdsc_2025_track_one": _import_gather_carbon_emission_results_bdsc_2025_track_one,
         "gather_promotion_results_bdsc_2025_track_one": _import_gather_promotion_results_bdsc_2025_track_one,
