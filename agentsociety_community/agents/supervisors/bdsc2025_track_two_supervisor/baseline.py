@@ -77,10 +77,6 @@ class BaselineSupervisor(BDSC2025SupervisorBase):
                 current_round_number=self.current_round_number,
                 # Current processing message
                 current_processing_message=post["content"],
-                current_processing_message_sender_id=post["sender_id"],
-                current_processing_message_receiver_ids=post[
-                    "original_intended_receiver_ids"
-                ],
                 # Current round posts
                 current_round_posts=[
                     {

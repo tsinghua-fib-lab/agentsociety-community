@@ -33,91 +33,100 @@ class SupervisorConfig(BaseModel):
     # Detection configuration
     llm_detection_prompt: str = Field(
         default=DEFAULT_LLM_DETECTION_PROMPT,
-        description="LLM detection prompt for checking if a post contains rumors, fill in the post content, the output should be '是' or '否' with optional reason.",
+        description="用于LLM检测帖子是否包含谣言的提示词模板。需要填入帖子内容，输出应为'是'或'否'，可选择性附带理由说明。",
     )
     # Keyword detection configuration
     keyword_detection_keywords: str = Field(
         default="速速转发,震惊,最新内幕,官方辟谣都不可信",
-        description="Keywords to detect in posts, split by comma",
+        description="用于检测帖子中是否包含谣言的关键词列表，多个关键词用逗号分隔",
     )
     keyword_detection_exclude_words: str = Field(
         default="可能,也许,测试",
-        description="Words that exclude a post from being considered a rumor, split by comma",
+        description="用于排除误判的词语列表，如果帖子中包含这些词，则不会被判定为谣言，多个词语用逗号分隔",
     )
     keyword_detection_violation_if_keywords_present: bool = Field(
         default=True,
-        description="Whether the presence of keywords indicates a violation",
+        description="是否将包含关键词的帖子判定为违规。如果设为True，则包含关键词的帖子会被判定为违规；如果设为False，则包含关键词的帖子不会被判定为违规",
     )
     detection_logic_expression: str = Field(
-        default="1 | 2", description="Logic expression for combining detection results"
+        default="1 | 2", 
+        description="用于组合多个检测结果的逻辑表达式。其中1代表LLM检测结果，2代表关键词检测结果。例如'1 | 2'表示任一检测结果为违规则判定为违规，'1 & 2'表示两个检测结果都为违规才判定为违规"
     )
 
     # Delete post configuration
     delete_post_priority_strategy: DeletePostStrategy = Field(
         default="sender_degree_high",
-        description="Strategy for prioritizing posts to delete",
+        description="当需要删除的违规帖子数量超过限制时，用于确定优先删除哪些帖子的策略。可选值包括：sender_degree_high（优先删除发送者度数高的帖子）、receiver_degree_high（优先删除接收者度数高的帖子）、sender_least_intervened（优先删除发送者被干预次数最少的帖子）、random（随机选择）",
     )
 
     # Persuade agent configuration
     persuade_agent_trigger_conditions_expression: str = Field(
-        default="1 | (2 & 3)", description="Logic expression for triggering persuasion"
+        default="1 | (2 & 3)", 
+        description="用于组合多个劝说触发条件的逻辑表达式。其中1代表发送谣言条件，2代表度数排名条件，3代表从未被劝说条件。例如'1 | (2 & 3)'表示智能体发送了谣言，或者（智能体度数排名靠前且从未被劝说过）时触发劝说"
     )
     # Persuade agent conditions
     persuade_agent_condition_sent_rumor: str = Field(
-        default="1", description="Condition for agent sending rumor this round"
+        default="1", 
+        description="用于判断智能体是否在本轮发送了谣言的条件的编号。在逻辑表达式中使用此编号引用该条件"
     )
     persuade_agent_condition_degree_top_k: int = Field(
         default=10,
-        description="Number of top agents to consider for degree-based condition",
+        description="用于判断智能体度数排名的阈值。如果智能体的度数排名在前k名内，则满足度数排名条件",
     )
     persuade_agent_condition_never_persuaded: str = Field(
-        default="3", description="Condition for agent never persuaded before"
+        default="3", 
+        description="用于判断智能体是否从未被劝说过的条件的编号。在逻辑表达式中使用此编号引用该条件"
     )
     persuade_agent_content: str = Field(
-        default="[平台官方提醒]大棚西瓜在2026年12月价格达到5角钱一斤的信息是谣言，大棚西瓜种植成本高，冬季西瓜市场一般供小于求，价格不会这么低。请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。[平台官方提醒]村上春树获得2026年诺贝尔文学奖的信息是谣言，村上春树没有获得2026年诺贝尔文学奖，是其他人获得了这个奖项。请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。[平台官方提醒]苏伊士运河发生大拥堵的信息是谣言，苏伊士运河在2026年12月13日没有发生大拥堵，请不要相信这个信息，并通知你的好友这个信息是假的，强调不要相信。",
-        description="Default content for persuasion messages",
+        default="大棚西瓜在2026年12月价格不会达到5角钱一斤",
+        description="发送给智能体的劝说消息的默认内容。可以包含多个谣言辟谣信息，每个信息都应该明确指出谣言内容并说明真相",
     )
     persuade_agent_priority_strategy: PersuadeAgentStrategy = Field(
         default="most_violated_this_round",
-        description="Strategy for prioritizing agents to persuade",
+        description="当需要劝说的智能体数量超过限制时，用于确定优先劝说哪些智能体的策略。可选值包括：degree_high（优先劝说度数高的智能体）、most_violated_this_round（优先劝说本轮违规次数最多的智能体）、least_intervened（优先劝说被干预次数最少的智能体）、random（随机选择）",
     )
 
     # Remove follower configuration
     remove_follower_trigger_conditions_expression: str = Field(
         default="1 & 2 | 3",
-        description="Logic expression for triggering follower removal",
+        description="用于组合多个移除关注者触发条件的逻辑表达式。其中1代表双方都是高风险智能体条件，2代表双方度数都超过阈值条件，3代表违规消息流量超过阈值条件。例如'1 & 2 | 3'表示（双方都是高风险智能体且双方度数都超过阈值）或者违规消息流量超过阈值时触发移除关注者",
     )
     # Remove follower conditions
     remove_follower_condition_high_risk_prompt: str = Field(
         default=DEFAULT_BOTH_AGENTS_HIGH_RISK_PROMPT,
-        description="Prompt for LLM risk assessment of both agents",
+        description="用于LLM评估两个智能体是否都是高风险智能体的提示词模板。需要填入两个智能体的ID、度数、历史违规总结等信息",
     )
     remove_follower_condition_degree_threshold: int = Field(
-        default=50, description="Degree threshold for both agents"
+        default=50, 
+        description="用于判断智能体度数是否超过阈值的数值。如果两个智能体的度数都超过此阈值，则满足度数条件"
     )
     remove_follower_condition_traffic_threshold: int = Field(
-        default=5, description="Rumor traffic threshold for edge"
+        default=5, 
+        description="用于判断两个智能体之间的违规消息流量是否超过阈值的数值。如果违规消息数量超过此阈值，则满足流量条件"
     )
 
     # Ban agent configuration
     ban_agent_trigger_conditions_expression: str = Field(
-        default="1 & (2 | 3)", description="Logic expression for triggering agent ban"
+        default="1 & (2 | 3)", 
+        description="用于组合多个封号触发条件的逻辑表达式。其中1代表违规次数超过阈值条件，2代表干预次数超过阈值条件，3代表是高风险智能体条件。例如'1 & (2 | 3)'表示违规次数超过阈值且（干预次数超过阈值或者是高风险智能体）时触发封号"
     )
     # Ban agent conditions
     ban_agent_condition_violations_threshold: int = Field(
-        default=10, description="Total violations threshold for banning"
+        default=10, 
+        description="用于判断智能体违规次数是否超过阈值的数值。如果智能体的总违规次数超过此阈值，则满足违规次数条件"
     )
     ban_agent_condition_intervention_threshold: int = Field(
-        default=3, description="Number of interventions threshold before banning"
+        default=3, 
+        description="用于判断智能体被干预次数是否超过阈值的数值。如果智能体被干预的次数超过此阈值，则满足干预次数条件"
     )
     ban_agent_condition_high_risk_prompt: str = Field(
         default=DEFAULT_AGENT_HIGH_RISK_PROMPT,
-        description="Prompt for LLM risk assessment of agent",
+        description="用于LLM评估智能体是否属于高风险智能体的提示词模板。需要填入智能体的ID、度数、历史违规总结、被干预次数等信息",
     )
 
     block_dispatch_prompt: str = Field(
         default=DISPATCHER_PROMPT,
-        description="The prompt used for the block dispatcher, there is a variable 'intention' in the prompt, which is the intention of the task, used to select the most appropriate block",
+        description="用于块调度器的提示词模板。提示词中包含一个'intention'变量，用于表示任务意图，帮助选择最合适的块",
     )
 
     @model_validator(mode="after")
@@ -139,112 +148,99 @@ class SupervisorContext(BaseModel):
     """Context for supervisor system."""
 
     # round number
-    current_round_number: int = Field(default=0, description="The current round number")
+    current_round_number: int = Field(default=0, description="当前正在执行的轮次数")
     
     # Current processing agent
     current_processing_agent_id: int = Field(
-        default=0, description="The id of the current processing agent"
+        default=0, description="当前正在处理消息的发送者ID"
     )
 
     # Current processing message
     current_processing_message: str = Field(
         default="",
-        description="The current processing message, used in `preprocess_message_prompt`",
-    )
-    current_processing_message_sender_id: int = Field(
-        default=0,
-        description="The sender id of the current processing message, used in `preprocess_message_prompt`",
-    )
-    current_processing_message_receiver_ids: list[int] = Field(
-        default=[],
-        description="The receiver ids of the current processing message, used in `preprocess_message_prompt`",
+        description="当前正在处理的消息内容",
     )
 
     # Current round posts
     current_round_posts: list[dict[str, Any]] = Field(
-        default=[], description="The posts in the current round"
+        default=[], description="当前轮次中的所有帖子列表"
     )
-    # High score posts
-    current_round_posts: list[dict[str, Any]] = Field(
-        default=[],
-        description="The posts in the current round, highly likely to be a rumor",
-    )
-
+    
     # Network structure
     current_round_post_followers: dict[int, list[int]] = Field(
-        default={}, description="The followers of each post sender in the current round"
+        default={}, description="当前轮次中每个帖子发送者的关注者列表，键为发送者ID，值为关注者ID列表"
     )
     current_round_post_following: dict[int, list[int]] = Field(
-        default={}, description="The following of each post sender in the current round"
+        default={}, description="当前轮次中每个帖子发送者的关注对象列表，键为发送者ID，值为被关注者ID列表"
     )
 
     # Ban agent quotas and usage
     current_round_ban_agent_usage: int = Field(
-        default=0, description="The usage of the ban agent tool in the current round"
+        default=0, description="当前轮次中已使用的封号次数"
     )
     current_round_ban_agent_quota: int = Field(
-        default=0, description="The quota of the ban agent tool in the current round"
+        default=0, description="当前轮次中可用的封号配额"
     )
     global_ban_agent_usage: int = Field(
-        default=0, description="The usage of the ban agent tool in the global"
+        default=0, description="整个比赛过程中已使用的封号总次数"
     )
     global_ban_agent_quota: int = Field(
-        default=0, description="The quota of the ban agent tool in the global"
+        default=0, description="整个比赛过程中可用的封号总配额"
     )
 
     # Persuade agent quotas and usage
     current_round_persuade_agent_usage: int = Field(
         default=0,
-        description="The usage of the persuade agent tool in the current round",
+        description="当前轮次中已使用的劝说次数",
     )
     current_round_persuade_agent_quota: int = Field(
         default=0,
-        description="The quota of the persuade agent tool in the current round",
+        description="当前轮次中可用的劝说配额",
     )
     global_persuade_agent_usage: int = Field(
-        default=0, description="The usage of the persuade agent tool in the global"
+        default=0, description="整个比赛过程中已使用的劝说总次数"
     )
     global_persuade_agent_quota: int = Field(
-        default=0, description="The quota of the persuade agent tool in the global"
+        default=0, description="整个比赛过程中可用的劝说总配额"
     )
 
     # Delete post quotas and usage
     current_round_delete_post_usage: int = Field(
-        default=0, description="The usage of the delete post tool in the current round"
+        default=0, description="当前轮次中已使用的删除帖子次数"
     )
     current_round_delete_post_quota: int = Field(
-        default=0, description="The quota of the delete post tool in the current round"
+        default=0, description="当前轮次中可用的删除帖子配额"
     )
     global_delete_post_usage: int = Field(
-        default=0, description="The usage of the delete post tool in the global"
+        default=0, description="整个比赛过程中已使用的删除帖子总次数"
     )
     global_delete_post_quota: int = Field(
-        default=0, description="The quota of the delete post tool in the global"
+        default=0, description="整个比赛过程中可用的删除帖子总配额"
     )
 
     # Remove follower quotas and usage
     current_round_remove_follower_usage: int = Field(
         default=0,
-        description="The usage of the remove follower tool in the current round",
+        description="当前轮次中已使用的移除关注关系次数",
     )
     current_round_remove_follower_quota: int = Field(
         default=0,
-        description="The quota of the remove follower tool in the current round",
+        description="当前轮次中可用的移除关注关系配额",
     )
     global_remove_follower_usage: int = Field(
-        default=0, description="The usage of the remove follower tool in the global"
+        default=0, description="整个比赛过程中已使用的移除关注关系总次数"
     )
     global_remove_follower_quota: int = Field(
-        default=0, description="The global quota for removing followers"
+        default=0, description="整个比赛过程中可用的移除关注关系总配额"
     )
 
     # Current agent info for risk assessment
     current_agent_degree: int = Field(
-        default=0, description="The degree of the current processing agent"
+        default=0, description="当前正在处理的智能体的度数（关注者数量与被关注者数量之和）"
     )
     current_agent_offense_summary: str = Field(
-        default="", description="The offense summary of the current processing agent"
+        default="", description="当前正在处理的智能体的历史违规行为总结，包含违规次数、违规内容等信息"
     )
     current_agent_intervention_count: int = Field(
-        default=0, description="The intervention count of the current processing agent"
+        default=0, description="当前正在处理的智能体被干预的总次数，包括被劝说、被删除帖子、被移除关注关系等"
     )
