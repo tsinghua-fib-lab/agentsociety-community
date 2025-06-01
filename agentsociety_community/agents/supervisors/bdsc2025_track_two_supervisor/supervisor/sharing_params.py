@@ -124,11 +124,6 @@ class SupervisorConfig(BaseModel):
         description="用于LLM评估智能体是否属于高风险智能体的提示词模板。需要填入智能体的ID、度数、历史违规总结、被干预次数等信息",
     )
 
-    block_dispatch_prompt: str = Field(
-        default=DISPATCHER_PROMPT,
-        description="用于块调度器的提示词模板。提示词中包含一个'intention'变量，用于表示任务意图，帮助选择最合适的块",
-    )
-
     @model_validator(mode="after")
     def validate_configuration(self):
         """Validate configuration options to ensure the user selects the correct combination"""
