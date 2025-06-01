@@ -1,7 +1,7 @@
 import asyncio
 import random
 import time
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from agentsociety.agent import (Agent, AgentToolbox, Block, CitizenAgentBase,
                                 StatusAttribute)
@@ -290,6 +290,7 @@ class RumorSpreader(CitizenAgentBase):
             blocks=blocks,
         )
         self.step_count = -1
+        self.params = cast(RumorSpreaderConfig, self.params)
 
     async def reset(self):
         """Reset the agent."""
@@ -299,9 +300,10 @@ class RumorSpreader(CitizenAgentBase):
     # Main workflow
     async def forward(self):  # type: ignore
         start_time = time.time()
-        rumor_content = self.params.rumor_posts[
-            self.step_count % len(self.params.rumor_posts)
-        ]
+        # rumor_content = self.params.rumor_posts[
+        #     self.step_count % len(self.params.rumor_posts)
+        # ]
+        rumor_content = self.params.rumor_post
         current_social_network: list[SocialRelation] = await self.memory.status.get(
             "social_network", []
         )
