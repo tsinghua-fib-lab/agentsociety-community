@@ -257,11 +257,6 @@ class BaselineEnvAmbassador(EnvAgentBase):
                     "parameters": function_args,
                     "success": False
                 })
-                self.context.sense_history.append({
-                    "function": function_name,
-                    "parameters": function_args,
-                    "success": False
-                })
 
         # Phase 2: Strategy Planning based on gathered information
         await self.plan_prompt.format(context=self.context)
