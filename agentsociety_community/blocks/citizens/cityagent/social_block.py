@@ -1,6 +1,5 @@
 # Due to the current limitations of the simulator's support, only NoneBlock, MessageBlock, and FindPersonBlock are available in the Dispatcher.
 
-import logging
 from typing import Any, Optional
 
 import jsonc
@@ -438,7 +437,7 @@ class SocialBlock(Block):
     ContextType = SocialBlockContext
     NeedAgent = True
     name = "SocialBlock"
-    description = "Responsible for all kinds of social interactions"
+    description = "Responsible for all kinds of social interactions, for example, find a friend, send a message, etc."
     actions = {
         "find_person": "Support the find person action, determine the social target.",
         "message": "Support the message action, send a message to the social target.",

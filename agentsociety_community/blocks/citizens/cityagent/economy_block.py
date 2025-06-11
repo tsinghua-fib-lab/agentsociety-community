@@ -1,5 +1,3 @@
-import asyncio
-import logging
 import numbers
 import random
 from typing import Optional
@@ -272,6 +270,16 @@ class EconomyBlockParams(BlockParams):
     worktime_estimation_prompt: str = Field(
         default=WORKTIME_ESTIMATE_PROMPT, description="Used to determine the worktime"
     )
+    UBI: float = Field(default=0, description="Universal Basic Income")
+    num_labor_hours: int = Field(
+        default=168, description="Number of labor hours per month"
+    )
+    productivity_per_labor: float = Field(
+        default=1, description="Productivity per labor hour"
+    )
+    time_diff: int = Field(
+        default=30 * 24 * 60 * 60, description="Time difference between two triggers"
+    )
 
 
 class EconomyBlockContext(BlockContext): ...
@@ -292,7 +300,7 @@ class EconomyBlock(Block):
     ContextType = EconomyBlockContext
     NeedAgent = True
     name = "EconomyBlock"
-    description = "Responsible for all kinds of economic-related operations"
+    description = "Responsible for all kinds of economic-related operations, for example, work, shopping, consume, etc."
     actions = {
         "work": "Support the work action",
         "consume": "Support the consume action",
@@ -312,6 +320,15 @@ class EconomyBlock(Block):
             agent_memory=agent_memory,
             block_params=block_params,
         )
+        self.month_plan_block = MonthEconomyPlanBlock(
+            llm=llm,
+            environment=environment,
+            agent_memory=agent_memory,
+            ubi=self.params.UBI,
+            num_labor_hours=self.params.num_labor_hours,
+            productivity_per_labor=self.params.productivity_per_labor,
+            time_diff=self.params.time_diff,
+        )
         self.work_block = WorkBlock(
             llm, environment, agent_memory, self.params.worktime_estimation_prompt
         )
@@ -324,6 +341,13 @@ class EconomyBlock(Block):
             [self.work_block, self.consumption_block, self.none_block]
         )
 
+    async def before_forward(self):
+        try:
+            await self.month_plan_block.forward()
+        except Exception as e:
+            get_logger().warning(f"EconomyBlock MonthPlanBlock: {e}")
+            pass
+
     async def forward(self, agent_context: DotDict) -> SocietyAgentBlockOutput:
         """Coordinate economic activity execution.
 
@@ -331,19 +355,30 @@ class EconomyBlock(Block):
             1. Use dispatcher to select appropriate handler
             2. Delegate execution to selected block
         """
-        self.trigger_time += 1
-        context = agent_context | self.context
-        intention = context["current_step"]["intention"]
-        selected_block = await self.dispatcher.dispatch(context)
-        if selected_block is None:
-            return self.OutputType(
-                success=False,
-                evaluation=f"Failed to {intention}",
-                consumed_time=0,
-                node_id=None,
+        try:
+            self.trigger_time += 1
+            context = agent_context | self.context
+            intention = context["current_step"]["intention"]
+            selected_block = await self.dispatcher.dispatch(context)
+            if selected_block is None:
+                return self.OutputType(
+                    success=False,
+                    evaluation=f"Failed to {intention}",
+                    consumed_time=0,
+                    node_id=None,
+                )
+            result = await selected_block.forward(context)
+            return self.OutputType(**result)
+        except Exception as e:
+            get_logger().error(
+                f"EconomyBlock: Error in forward: {e}"
             )
-        result = await selected_block.forward(context)
-        return self.OutputType(**result)
+            return self.OutputType(
+                    success=False,
+                    evaluation=f"Failed to forward",
+                    consumed_time=0,
+                    node_id=None,
+                )
 
 
 class MonthEconomyPlanBlock(Block):

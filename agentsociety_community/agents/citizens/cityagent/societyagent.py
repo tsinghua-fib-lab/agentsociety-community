@@ -16,7 +16,6 @@ from agentsociety.message import Message
 from .cognition_block import CognitionBlock
 from .needs_block import NeedsBlock
 from .plan_block import PlanBlock
-from .economy_block import MonthEconomyPlanBlock
 from .sharing_params import (
     SocietyAgentConfig,
     SocietyAgentBlockOutput,
@@ -212,16 +211,6 @@ You can add more blocks to the citizen as you wish to adapt to the different sce
             blocks=blocks,
         )
 
-        self.month_plan_block = MonthEconomyPlanBlock(
-            llm=self.llm,
-            environment=self.environment,
-            agent_memory=self.memory,
-            ubi=self.params.UBI,
-            num_labor_hours=self.params.num_labor_hours,
-            productivity_per_labor=self.params.productivity_per_labor,
-            time_diff=self.params.time_diff,
-        )
-
         self.needs_block = NeedsBlock(
             llm=self.llm,
             environment=self.environment,
@@ -246,6 +235,10 @@ You can add more blocks to the citizen as you wish to adapt to the different sce
         self.environment_reflection_prompt = FormatPrompt(
             ENVIRONMENT_REFLECTION_PROMPT, memory=self.memory
         )
+
+        # register blocks
+        self.dispatcher.register_dispatcher_prompt(self.params.block_dispatch_prompt)
+
         self.step_count = -1
         self.cognition_update = -1
 
@@ -352,9 +345,6 @@ You can add more blocks to the citizen as you wish to adapt to the different sce
         get_logger().debug(
             f"Agent {self.id}: Finished main workflow - check and update step"
         )
-
-        # month plan
-        await self.month_plan_block.forward()
 
         # Maxlow's Needs
         cognition = await self.needs_block.forward()

@@ -1,4 +1,3 @@
-import logging
 import math
 import random
 from typing import Any, Optional
@@ -496,7 +495,7 @@ class MobilityBlock(Block):
     OutputType = SocietyAgentBlockOutput
     ContextType = MobilityBlockContext
     name = "MobilityBlock"
-    description = "Responsible for all kinds of mobility-related operations"
+    description = "Responsible for all kinds of mobility-related operations, for example, go to work, go to home, go to other places, etc."
     actions = {
         "place_selection": "Support the place selection action",
         "move": "Support the move action",
